@@ -63,7 +63,10 @@ function restDayIndicesFor(memberIdx, nMembers, targetPerWeek) {
 
 /**
  * Tính lịch gợi ý cho 1 văn phòng trong 1 tuần (Thứ 2 -> Chủ nhật).
- * Trả về: { [personId]: { name, title, days: [code x7] } }
+ * Trả về: { [personId]: { name, title, days: [code x7], ranges: [null x7] } }
+ * `ranges[i]` = null nghĩa là dùng đúng khung giờ mặc định của mã ca `days[i]`; nếu người dùng kéo
+ * giãn/di chuyển/thêm/xoá giờ ở tab "Theo ngày", `ranges[i]` được ghi đè thành mảng [[s,e], ...] riêng
+ * cho đúng ngày đó (xem effectiveRanges() trong js/timeline.js).
  */
 function suggestWeekSchedule(office, mondayDate) {
   const wIdx = weekIndexOf(mondayDate);
@@ -94,7 +97,7 @@ function suggestWeekSchedule(office, mondayDate) {
         }
         days.push(code);
       }
-      result[person.id] = { name: person.name, title: person.title || '', teamId: team.id, days };
+      result[person.id] = { name: person.name, title: person.title || '', teamId: team.id, days, ranges: new Array(7).fill(null) };
     });
   }
   return result;

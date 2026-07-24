@@ -80,11 +80,14 @@ function renderView() {
   if (isDay) {
     renderDayStrip();
     const dates = weekDates(state.monday);
-    els.hintText.textContent = `Đang xếp lịch cho ${WEEKDAY_FULL[state.dayIdx]}, ${String(dates[state.dayIdx].getUTCDate()).padStart(2, '0')}/${String(dates[state.dayIdx].getUTCMonth() + 1).padStart(2, '0')}. Bấm vào 1 thanh ca để chọn ca khác, hoặc kéo-thả đổi chỗ ca giữa 2 người.`;
+    els.hintText.textContent = `Đang xếp lịch cho ${WEEKDAY_FULL[state.dayIdx]}, ${String(dates[state.dayIdx].getUTCDate()).padStart(2, '0')}/${String(dates[state.dayIdx].getUTCMonth() + 1).padStart(2, '0')}. Kéo 2 đầu thanh ca để tăng/giảm giờ, kéo giữa để dời cả ca, bấm × để xoá, bấm + để thêm ca. Bấm giữa thanh (không kéo) để đổi hẳn sang ca khác.`;
     renderDayTimeline(els.timeline, state.office, state.schedule, state.dayIdx, dates[state.dayIdx], {
       editable: true,
       onChange: onChangeShift,
-      onSwap: onSwapShift,
+      onAddSegment,
+      onRemoveSegment,
+      onResizeLive,
+      onResizeEnd: () => renderView(),
     });
   } else {
     els.hintText.textContent = 'Bấm vào 1 thanh ca để chọn ca khác (kể cả đổi thành "Nghỉ"). Hoặc kéo-thả 1 thanh ca thả vào ô của người/ngày khác để đổi chỗ 2 ca cho nhau. Thanh mờ ở đầu ngày là phần ca đêm hôm trước vắt sang — muốn đổi thì bấm vào đúng ngày ca đó bắt đầu.';
@@ -98,18 +101,63 @@ function renderView() {
 
 function onChangeShift(personId, dayIdx, newCode) {
   state.schedule[personId].days[dayIdx] = newCode;
+  state.schedule[personId].ranges[dayIdx] = null; // đổi hẳn sang ca khác -> quay về giờ mặc định của ca đó
   markDirty();
   renderView();
 }
 
 function onSwapShift(personA, dayA, personB, dayB) {
-  const a = state.schedule[personA].days;
-  const b = state.schedule[personB].days;
-  const tmp = a[dayA];
-  a[dayA] = b[dayB];
-  b[dayB] = tmp;
+  const a = state.schedule[personA];
+  const b = state.schedule[personB];
+  const tmpCode = a.days[dayA]; a.days[dayA] = b.days[dayB]; b.days[dayB] = tmpCode;
+  const tmpRanges = a.ranges[dayA]; a.ranges[dayA] = b.ranges[dayB]; b.ranges[dayB] = tmpRanges;
   markDirty();
   renderView();
+}
+
+// Thêm 1 khối giờ: nếu ngày đó đang "Nghỉ" thì gán hẳn thành ca mới (giống bấm đổi ca); nếu đã có ca
+// làm việc rồi thì THÊM 1 khối giờ nữa (lấy khung giờ mặc định của ca vừa chọn), giữ nguyên mã ca/màu
+// gốc của ngày đó — dùng cho ca gãy/tăng ca thêm 1 đoạn, giống nút "+" trong file HTML gốc.
+function onAddSegment(personId, dayIdx, newCode) {
+  const person = state.schedule[personId];
+  const currentCode = person.days[dayIdx];
+  const hadCustom = !!(person.ranges[dayIdx] && person.ranges[dayIdx].length);
+  if (currentCode === REST_CODE && !hadCustom) {
+    person.days[dayIdx] = newCode;
+    person.ranges[dayIdx] = null;
+  } else {
+    const base = effectiveRanges(state.office, currentCode, person.ranges[dayIdx]);
+    const newDef = shiftDefFor(state.office, newCode);
+    const newSegs = newCode === REST_CODE ? [[0, 24]] : parseHoursSegments(newDef.hours);
+    person.ranges[dayIdx] = [...base, newSegs[0]];
+  }
+  markDirty();
+  renderView();
+}
+
+// Xoá 1 khối giờ. Nếu xoá hết sạch (không còn khối nào), coi như cả ngày đó nghỉ.
+function onRemoveSegment(personId, dayIdx, segIdx) {
+  const person = state.schedule[personId];
+  const base = effectiveRanges(state.office, person.days[dayIdx], person.ranges[dayIdx]);
+  base.splice(segIdx, 1);
+  if (base.length === 0) {
+    person.days[dayIdx] = REST_CODE;
+    person.ranges[dayIdx] = null;
+  } else {
+    person.ranges[dayIdx] = base;
+  }
+  markDirty();
+  renderView();
+}
+
+// Gọi liên tục trong lúc đang kéo-giãn/di chuyển (mỗi lần chuột nhích) — chỉ ghi state, KHÔNG vẽ lại
+// UI (đắt) — js/timeline.js tự cập nhật vị trí thanh + biểu đồ trực tiếp trong lúc kéo.
+function onResizeLive(personId, dayIdx, segIdx, newS, newE) {
+  const person = state.schedule[personId];
+  const base = effectiveRanges(state.office, person.days[dayIdx], person.ranges[dayIdx]);
+  base[segIdx] = [newS, newE];
+  person.ranges[dayIdx] = base;
+  if (!state.dirty) markDirty();
 }
 
 function markDirty() {
@@ -118,13 +166,22 @@ function markDirty() {
   els.statusText.className = 'status-text dirty';
 }
 
+// Lịch lưu từ trước khi có tính năng kéo-giãn giờ có thể chưa có field `ranges` — bổ sung cho đủ 7 ô
+// null để buildDaySegments/effectiveRanges không bị lỗi thiếu dữ liệu.
+function normalizeSchedule(schedule) {
+  Object.values(schedule).forEach(p => {
+    if (!Array.isArray(p.ranges)) p.ranges = new Array(7).fill(null);
+  });
+  return schedule;
+}
+
 async function loadWeek() {
   const weekId = isoDate(state.monday);
   if (state.unsub) { state.unsub(); state.unsub = null; }
   els.statusText.textContent = 'Đang tải…';
   const saved = await StorageAPI.loadWeek(state.office.id, weekId);
   if (saved && saved.assignments) {
-    state.schedule = saved.assignments;
+    state.schedule = normalizeSchedule(saved.assignments);
     els.statusText.textContent = `Đã lưu lúc ${new Date(saved.updatedAt).toLocaleString('vi-VN')}${saved.updatedBy ? ' bởi ' + saved.updatedBy : ''}`;
     els.statusText.className = 'status-text';
   } else {

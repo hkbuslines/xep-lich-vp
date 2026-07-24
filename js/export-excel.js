@@ -129,7 +129,9 @@ function buildLichTuanSheet(wb, office, schedule, dates) {
       person.days.forEach((code, i) => {
         const def = shiftDefFor(office, code);
         const cell = row.getCell(i + 2);
-        cell.value = def.hours ? `${def.code}\n${def.hours}` : def.code;
+        const ranges = effectiveRanges(office, code, person.ranges && person.ranges[i]);
+        const hoursText = code === REST_CODE ? '' : ranges.map(([s, e]) => `${fmtHM(s)}-${fmtHM(Math.min(e, 24))}`).join(' & ');
+        cell.value = hoursText ? `${def.code}\n${hoursText}` : def.code;
         cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: tintFill(def.color) } };
         cell.font = { bold: true, color: { argb: solidFont(def.color) }, size: 10 };

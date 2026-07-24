@@ -42,17 +42,32 @@ function fmtHM(h) {
 }
 
 const TL_WEEKDAY = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+const SNAP_H = 0.5; // kéo giãn/di chuyển giờ luôn làm tròn tới 30 phút, như bản gốc
+const MIN_SEG_H = 0.5;
 
-// Với 7 mã ca/ngày của 1 người, tính ra danh sách đoạn cần vẽ cho MỖI ngày (kể cả đoạn vắt từ hôm trước).
-function buildDaySegments(office, days) {
+function snapH(h) { return Math.round(h * (1 / SNAP_H)) / (1 / SNAP_H); }
+function clampH(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// customRanges (person.ranges[dayIdx]) ghi đè khung giờ mặc định của mã ca nếu người dùng đã
+// kéo-giãn/di chuyển/thêm/xoá giờ ở tab "Theo ngày". null/undefined -> dùng giờ mặc định của code.
+function effectiveRanges(office, code, customRanges) {
+  if (customRanges && customRanges.length) return customRanges.map(r => r.slice());
+  if (code === REST_CODE) return [[0, 24]];
+  return parseHoursSegments(shiftDefFor(office, code).hours);
+}
+
+// Với 1 người (days + ranges tuỳ chỉnh), tính ra danh sách đoạn cần vẽ cho MỖI ngày (kể cả đoạn vắt
+// từ hôm trước). Mỗi đoạn có segIdx = vị trí của nó trong effectiveRanges(...) của đúng ngày đó, để
+// biết cần sửa/xoá đúng phần tử nào khi kéo-giãn hoặc bấm xoá.
+function buildDaySegments(office, person) {
+  const days = person.days;
   const perDay = days.map(() => []);
   days.forEach((code, dayIdx) => {
-    const def = shiftDefFor(office, code);
-    const segs = code === REST_CODE ? [[0, 24]] : parseHoursSegments(def.hours);
-    segs.forEach(([s, e]) => {
-      perDay[dayIdx].push({ s, e: Math.min(e, 24), code, carry: false });
+    const segs = effectiveRanges(office, code, person.ranges && person.ranges[dayIdx]);
+    segs.forEach(([s, e], segIdx) => {
+      perDay[dayIdx].push({ s, e: Math.min(e, 24), code, carry: false, segIdx });
       if (e > 24 && dayIdx + 1 < days.length) {
-        perDay[dayIdx + 1].push({ s: 0, e: e - 24, code, carry: true });
+        perDay[dayIdx + 1].push({ s: 0, e: e - 24, code, carry: true, segIdx });
       }
     });
   });
@@ -169,7 +184,7 @@ function renderTimeline(root, office, schedule, dates, opts) {
 
       const track = document.createElement('div');
       track.className = 'tl-person-row tl-track';
-      const daySegs = buildDaySegments(office, person.days);
+      const daySegs = buildDaySegments(office, person);
       daySegs.forEach((segs, dayIdx) => {
         const dayCell = document.createElement('div');
         dayCell.className = 'tl-day-cell';
@@ -206,11 +221,127 @@ function renderTimeline(root, office, schedule, dates, opts) {
   drawWeekHeadcountChart(canvas, office, schedule);
 }
 
+// Thanh ca CÓ THỂ kéo-giãn 2 đầu / kéo giữa để dời cả khối / bấm × để xoá — dùng riêng cho tab
+// "Theo ngày" (đủ rộng để thao tác chính xác), giống hệt cơ chế trong file lich_tongdai_sapa_*.html
+// gốc (pointerdown + snap 30 phút). refreshChart() được gọi liên tục khi đang kéo để cập nhật biểu
+// đồ sĩ số theo thời gian thực, không cần vẽ lại cả bảng.
+function buildDayBarEl(office, person, p, dayIdx, seg, opts, root, refreshChart) {
+  const { s, e, code, carry, segIdx } = seg;
+  const def = shiftDefFor(office, code);
+  const bar = document.createElement('div');
+  bar.className = 'tl-bar' + (code === REST_CODE ? ' tl-bar-rest' : '') + (carry ? ' tl-bar-carry' : '');
+  bar.style.setProperty('--c', def.color);
+  bar.style.left = (s / 24 * 100) + '%';
+  bar.style.width = (((e - s) / 24) * 100) + '%';
+
+  const label = document.createElement('span');
+  label.className = 'tl-bar-label';
+  const hmLabel = code === REST_CODE ? 'Nghỉ' : (fmtHM(s) + '–' + fmtHM(e));
+  label.textContent = hmLabel;
+  bar.appendChild(label);
+
+  if (carry) {
+    bar.title = `${person.name} — ${def.name}: tiếp tục từ tối hôm trước đến ${fmtHM(e)} (đổi ca này ở ngày hôm trước)`;
+    label.textContent = '⋯' + fmtHM(e);
+    return bar;
+  }
+  bar.title = `${person.name} — ${def.name} (${hmLabel})`;
+  if (!opts.editable) return bar;
+
+  if (code === REST_CODE) {
+    // Cả ngày đang "Nghỉ" — chỉ bấm để gán 1 ca làm việc, không có gì để kéo-giãn/xoá.
+    bar.style.cursor = 'pointer';
+    bar.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      openTimelineMenu(root, bar, office, (newCode) => opts.onAddSegment(p.id, dayIdx, newCode));
+    });
+    return bar;
+  }
+
+  bar.style.cursor = 'grab';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className = 'tl-bar-remove';
+  removeBtn.setAttribute('aria-label', 'Xoá ca này');
+  removeBtn.textContent = '×';
+  removeBtn.addEventListener('pointerdown', ev => ev.stopPropagation());
+  removeBtn.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    closeTimelineMenu();
+    opts.onRemoveSegment(p.id, dayIdx, segIdx);
+  });
+  bar.appendChild(removeBtn);
+
+  ['l', 'r'].forEach(side => {
+    const h = document.createElement('div');
+    h.className = 'tl-bar-handle tl-bar-handle-' + side;
+    h.dataset.handle = side;
+    bar.appendChild(h);
+  });
+
+  let justDragged = false;
+  bar.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (justDragged) { justDragged = false; return; }
+    openTimelineMenu(root, bar, office, (newCode) => opts.onChange(p.id, dayIdx, newCode));
+  });
+
+  bar.addEventListener('pointerdown', (ev) => {
+    const handle = ev.target.dataset && ev.target.dataset.handle;
+    const mode = handle === 'l' ? 'left' : handle === 'r' ? 'right' : 'move';
+    const track = bar.parentElement;
+    const trackWidth = track.getBoundingClientRect().width;
+    const startX = ev.clientX;
+    const origS = s, origE = e;
+    justDragged = false;
+    try { bar.setPointerCapture(ev.pointerId); } catch (err) {}
+    bar.style.cursor = 'grabbing';
+
+    function onMove(mv) {
+      const deltaH = (mv.clientX - startX) / trackWidth * 24;
+      if (Math.abs(deltaH) > 0.05) justDragged = true;
+      let ns = origS, ne = origE;
+      if (mode === 'move') {
+        const dur = origE - origS;
+        ns = clampH(snapH(origS + deltaH), 0, 24 - dur);
+        ne = ns + dur;
+      } else if (mode === 'left') {
+        ns = clampH(snapH(origS + deltaH), 0, origE - MIN_SEG_H);
+        ne = origE;
+      } else {
+        ne = clampH(snapH(origE + deltaH), origS + MIN_SEG_H, 24);
+        ns = origS;
+      }
+      bar.style.left = (ns / 24 * 100) + '%';
+      bar.style.width = (((ne - ns) / 24) * 100) + '%';
+      label.textContent = fmtHM(ns) + '–' + fmtHM(ne);
+      opts.onResizeLive(p.id, dayIdx, segIdx, ns, ne);
+      refreshChart();
+    }
+    function onUp(up) {
+      try { bar.releasePointerCapture(up.pointerId); } catch (err) {}
+      bar.style.cursor = 'grab';
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      if (justDragged) opts.onResizeEnd();
+    }
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    ev.preventDefault();
+  });
+
+  return bar;
+}
+
 /**
- * Vẽ thanh thời gian CHỈ 1 NGÀY (tab "Theo ngày") — mỗi người 1 thanh rộng hết khổ, dễ bấm/kéo hơn
- * để chỉnh hằng ngày, ruler theo giờ (0h-24h) thay vì theo ngày trong tuần.
+ * Vẽ thanh thời gian CHỈ 1 NGÀY (tab "Theo ngày") — mỗi người 1 thanh rộng hết khổ, kéo-giãn 2 đầu
+ * để tăng/giảm giờ, kéo giữa để dời cả ca, bấm + để thêm ca/× để xoá — giống hệt file HTML gốc.
  * dateObj: Date của đúng ngày đang xem (chỉ để hiển thị nhãn).
- * opts giống renderTimeline (onChange/onSwap dùng chung — dayA/dayB luôn bằng dayIdx).
+ * opts.editable, opts.onChange(personId, dayIdx, newCode) — giống renderTimeline.
+ * opts.onAddSegment(personId, dayIdx, newCode) — thêm 1 khối giờ mới (hoặc gán hẳn ca mới nếu đang Nghỉ).
+ * opts.onRemoveSegment(personId, dayIdx, segIdx) — xoá 1 khối giờ.
+ * opts.onResizeLive(personId, dayIdx, segIdx, newS, newE) — gọi liên tục khi đang kéo (không vẽ lại UI).
+ * opts.onResizeEnd() — gọi khi thả chuột sau khi đã thực sự kéo (vẽ lại UI đầy đủ 1 lần).
  */
 function renderDayTimeline(root, office, schedule, dayIdx, dateObj, opts) {
   opts = opts || {};
@@ -257,6 +388,9 @@ function renderDayTimeline(root, office, schedule, dayIdx, dateObj, opts) {
   }
   scrollInner.appendChild(hourRuler);
 
+  let dayCanvasEl = null;
+  const refreshChart = () => { if (dayCanvasEl) drawDayHeadcountChart(dayCanvasEl, office, schedule, dayIdx); };
+
   for (const team of office.teams) {
     const label = document.createElement('div');
     label.className = 'team-row-label';
@@ -275,25 +409,31 @@ function renderDayTimeline(root, office, schedule, dayIdx, dateObj, opts) {
       nameCell.innerHTML = `<div class="tl-name">${person.name}</div>${person.title ? `<div class="title-sub">${person.title}</div>` : ''}`;
       namesPane.appendChild(nameCell);
 
+      const rowInner = document.createElement('div');
+      rowInner.className = 'tl-person-row tl-day-row-inner';
+
       const track = document.createElement('div');
-      track.className = 'tl-person-row tl-track';
-      const daySegs = buildDaySegments(office, person.days);
+      track.className = 'tl-track';
+      const daySegs = buildDaySegments(office, person);
       const dayCell = document.createElement('div');
       dayCell.className = 'tl-day-cell';
-      daySegs[dayIdx].forEach(seg => dayCell.appendChild(buildBarEl(office, person, p, dayIdx, seg, opts, root)));
-      if (opts.editable) {
-        dayCell.addEventListener('dragover', (ev) => { ev.preventDefault(); dayCell.classList.add('tl-day-cell-over'); });
-        dayCell.addEventListener('dragleave', () => dayCell.classList.remove('tl-day-cell-over'));
-        dayCell.addEventListener('drop', (ev) => {
-          ev.preventDefault();
-          dayCell.classList.remove('tl-day-cell-over');
-          const src = JSON.parse(ev.dataTransfer.getData('text/plain'));
-          if (src.p === p.id && src.d === dayIdx) return;
-          opts.onSwap && opts.onSwap(src.p, src.d, p.id, dayIdx);
-        });
-      }
+      daySegs[dayIdx].forEach(seg => dayCell.appendChild(buildDayBarEl(office, person, p, dayIdx, seg, opts, root, refreshChart)));
       track.appendChild(dayCell);
-      scrollInner.appendChild(track);
+      rowInner.appendChild(track);
+
+      if (opts.editable) {
+        const addBtn = document.createElement('button');
+        addBtn.className = 'round-btn tl-add-btn';
+        addBtn.setAttribute('aria-label', 'Thêm ca cho ' + person.name);
+        addBtn.textContent = '+';
+        addBtn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          openTimelineMenu(root, addBtn, office, (newCode) => opts.onAddSegment(p.id, dayIdx, newCode));
+        });
+        rowInner.appendChild(addBtn);
+      }
+
+      scrollInner.appendChild(rowInner);
     }
   }
 
@@ -308,6 +448,7 @@ function renderDayTimeline(root, office, schedule, dayIdx, dateObj, opts) {
   canvas.className = 'tl-chart';
   chartCellWrap.appendChild(canvas);
   scrollInner.appendChild(chartCellWrap);
+  dayCanvasEl = canvas;
   drawDayHeadcountChart(canvas, office, schedule, dayIdx);
 }
 
@@ -343,7 +484,7 @@ function drawWeekHeadcountChart(canvas, office, schedule) {
   const SLOTS = 7 * 48;
   const counts = new Array(SLOTS).fill(0);
   Object.values(schedule).forEach(person => {
-    const daySegs = buildDaySegments(office, person.days);
+    const daySegs = buildDaySegments(office, person);
     daySegs.forEach((segs, dayIdx) => {
       segs.forEach(({ s, e, code }) => {
         if (code === REST_CODE) return;
@@ -360,7 +501,7 @@ function drawDayHeadcountChart(canvas, office, schedule, dayIdx) {
   const SLOTS = 48;
   const counts = new Array(SLOTS).fill(0);
   Object.values(schedule).forEach(person => {
-    const daySegs = buildDaySegments(office, person.days);
+    const daySegs = buildDaySegments(office, person);
     daySegs[dayIdx].forEach(({ s, e, code }) => {
       if (code === REST_CODE) return;
       const from = Math.round(s * 2);
