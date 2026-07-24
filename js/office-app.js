@@ -52,6 +52,15 @@ function renderTimelineNow() {
       markDirty();
       renderTimelineNow();
     },
+    onSwap: (personA, dayA, personB, dayB) => {
+      const a = state.schedule[personA].days;
+      const b = state.schedule[personB].days;
+      const tmp = a[dayA];
+      a[dayA] = b[dayB];
+      b[dayB] = tmp;
+      markDirty();
+      renderTimelineNow();
+    },
   });
 }
 

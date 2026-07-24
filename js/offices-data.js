@@ -19,30 +19,30 @@ const OFFICES = [
       { code: 'HC', name: 'Hành chính', hours: '08:00-17:00', color: '#868E96' },
     ],
     teams: [
-      { id: 'QL', rotateBy: 'fixed', cycle: ['HC'], dayOff: [7],
+      { id: 'QL', name: 'Quản lý', rotateBy: 'fixed', cycle: ['HC'], dayOff: [7],
         people: [{ id: 'HK0009', name: 'Nguyễn Thị Hương', title: 'Quản lý' }] },
-      { id: 'DOI1', rotateBy: 'week', cycle: ['CA1', 'CA2', 'CA3'], cycleOffset: 0, restPerWeek: 1,
+      { id: 'DOI1', name: 'Đội 1', rotateBy: 'week', cycle: ['CA1', 'CA2', 'CA3'], cycleOffset: 0, restPerWeek: 1,
         people: [
           { id: 'HK0015', name: 'Hà Hiểu My' },
           { id: 'HK0046', name: 'Lê Thị Hương Giang' },
           { id: 'HK0059', name: 'Nguyễn Thành Luân' },
           { id: 'HK0066', name: 'Nguyễn Thị Duyên' },
         ] },
-      { id: 'DOI2', rotateBy: 'week', cycle: ['CA1', 'CA2', 'CA3'], cycleOffset: 1, restPerWeek: 1,
+      { id: 'DOI2', name: 'Đội 2', rotateBy: 'week', cycle: ['CA1', 'CA2', 'CA3'], cycleOffset: 1, restPerWeek: 1,
         people: [
           { id: 'HK0104', name: 'Vì Yến Nhi' },
           { id: 'HK0131', name: 'Phạm Khánh Linh' },
           { id: 'HK0161', name: 'Nguyễn Thị Thu Hằng' },
           { id: 'HK0200', name: 'Nguyễn Thị Thanh Thanh' },
         ] },
-      { id: 'DOI3', rotateBy: 'week', cycle: ['CA1', 'CA2', 'CA3'], cycleOffset: 2, restPerWeek: 1,
+      { id: 'DOI3', name: 'Đội 3', rotateBy: 'week', cycle: ['CA1', 'CA2', 'CA3'], cycleOffset: 2, restPerWeek: 1,
         people: [
           { id: 'HK0220', name: 'Đào Ngọc Dũng' },
           { id: 'HK0341', name: 'Phạm Thị Hoa Mai' },
           { id: 'HK0342', name: 'Phạm Phương Anh' },
           { id: 'HK0349', name: 'Trần Khánh Phương' },
         ] },
-      { id: 'CADEM', rotateBy: 'fixed', cycle: ['CADEM'], restPerWeek: 1,
+      { id: 'CADEM', name: 'Ca đêm (cố định)', rotateBy: 'fixed', cycle: ['CADEM'], restPerWeek: 1,
         people: [
           { id: 'HK0360', name: 'Phạm Trung Dũng' },
           { id: 'HK0412', name: 'Nguyễn Thị Thúy Hằng' },
@@ -58,19 +58,19 @@ const OFFICES = [
       { code: 'DPTC', name: 'Điều phối trung chuyển', hours: '06:00-14:00 & 20:00-23:30', color: '#868E96' },
     ],
     teams: [
-      { id: 'TO1', rotateBy: 'week', cycle: ['CA_S', 'CA_C'], cycleOffset: 0,
+      { id: 'TO1', name: 'Tổ 1', rotateBy: 'week', cycle: ['CA_S', 'CA_C'], cycleOffset: 0,
         people: [
           { id: 'HK0118', name: 'Nguyễn Tuấn Linh', title: 'Trưởng ca' },
           { id: 'HK0171', name: 'Trần Thị Phương Lan' },
           { id: 'HK0314', name: 'Nguyễn Thị Tú Uyên' },
         ] },
-      { id: 'TO2', rotateBy: 'week', cycle: ['CA_S', 'CA_C'], cycleOffset: 1,
+      { id: 'TO2', name: 'Tổ 2', rotateBy: 'week', cycle: ['CA_S', 'CA_C'], cycleOffset: 1,
         people: [
           { id: 'HK0017', name: 'Phạm Thị Thu Phương', title: 'Trưởng ca' },
           { id: 'HK0286', name: 'Lê Anh Quân' },
           { id: 'HK0462', name: 'Phạm Hữu Hiếu' },
         ] },
-      { id: 'DPTC', rotateBy: 'fixed', cycle: ['DPTC'],
+      { id: 'DPTC', name: 'Điều phối trung chuyển', rotateBy: 'fixed', cycle: ['DPTC'],
         people: [{ id: 'HK0175', name: 'Hoàng Thị Ánh Phương', title: 'Điều phối trung chuyển' }] },
     ],
   },
@@ -90,7 +90,7 @@ const OFFICES = [
     // đó (file T05 có 15 người, python config hiện tại (24/07/2026) chỉ còn 6 tạp vụ + 2 rửa xe — có vẻ
     // đã tinh giản/đổi nhân sự sau tháng 5) nên tạm để nguyên biệt danh, CẦN bổ sung họ tên đầy đủ.
     teams: [
-      { id: 'TAPVU', rotateBy: 'day', cycle: ['VP_SANG', 'VP_GAY', 'CA_SANG', 'CA_GIUA', 'CA_CHIEU'], restPerWeek: 1,
+      { id: 'TAPVU', name: 'Tạp vụ', rotateBy: 'day', cycle: ['VP_SANG', 'VP_GAY', 'CA_SANG', 'CA_GIUA', 'CA_CHIEU'], restPerWeek: 1,
         people: [
           { id: 'TV01', name: 'Pàng (cần bổ sung họ tên đầy đủ)' },
           { id: 'TV02', name: 'Dù (cần bổ sung họ tên đầy đủ)' },
@@ -99,7 +99,7 @@ const OFFICES = [
           { id: 'TV05', name: 'Lò Thị Só' },
           { id: 'TV06', name: 'Đức Anh (cần bổ sung họ tên đầy đủ)' },
         ] },
-      { id: 'RUAXE', rotateBy: 'fixed', cycle: ['RX'],
+      { id: 'RUAXE', name: 'Rửa xe', rotateBy: 'fixed', cycle: ['RX'],
         people: [
           { id: 'RX01', name: 'Giàng A Máng' },
           { id: 'RX02', name: 'Chang A Sáu' },
@@ -118,7 +118,7 @@ const OFFICES = [
       { code: 'XE6', name: 'Xe 6', hours: 'Cả ngày', color: '#5F3DC4' },
     ],
     teams: [
-      { id: 'LAIXE', rotateBy: 'day', cycle: ['XE1', 'XE2', 'XE3', 'XE4', 'XE5', 'XE6', REST_CODE, REST_CODE],
+      { id: 'LAIXE', name: 'Lái xe', rotateBy: 'day', cycle: ['XE1', 'XE2', 'XE3', 'XE4', 'XE5', 'XE6', REST_CODE, REST_CODE],
         people: [
           { id: 'HK0125', name: 'Nguyễn Văn Đức' },
           { id: 'HK0471', name: 'Nguyễn Duy Đức' },

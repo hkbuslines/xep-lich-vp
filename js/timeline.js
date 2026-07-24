@@ -3,8 +3,14 @@
 // (xem "Xếp xe/lich_tongdai_thang_08_2026.html"), nhưng gộp cả tuần vào 1 ruler thay vì xem từng ngày,
 // vì trang này vốn đã ở đơn vị "1 tuần".
 //
-// KHÔNG xử lý phần "carry" (đoạn ca đêm vắt sang ngày hôm sau) như bản gốc để đơn giản hoá — ca qua
-// đêm (vd CADEM 21:00-07:00) chỉ vẽ từ giờ bắt đầu đến hết ngày (24:00) trên đúng ngày được xếp.
+// Cột tên KHÔNG dùng CSS `position: sticky` (đã thử — bị lỗi thanh ca cuộn ngang lộ ra đè lên cột tên
+// trong mọi trình duyệt test được) — thay vào đó tách hẳn thành 2 khối DOM riêng biệt đặt cạnh nhau:
+// khối tên (không cuộn) + khối lịch (cuộn ngang riêng) — đảm bảo về mặt cấu trúc không thể có chuyện
+// nội dung bên khối cuộn "lộ" ra ngoài khối tên, vì 2 khối không chung 1 vùng cuộn.
+//
+// Ca qua đêm (vd CADEM 21:00-07:00) vẽ 2 đoạn: đoạn chính trên đúng ngày được xếp (21:00-24:00) VÀ
+// đoạn "vắt" mờ hơn trên ngày HÔM SAU (00:00-07:00, cùng màu ca đêm) — giống bản gốc. Đoạn vắt chỉ để
+// xem, không bấm/kéo được — muốn đổi ca đêm đó thì bấm vào đúng ngày nó bắt đầu.
 
 function parseHM(tok) {
   tok = tok.trim();
@@ -15,18 +21,20 @@ function parseHM(tok) {
   return 0;
 }
 
-// "06:00-15:00" | "6h-9h & 17h30-23h30" | "Cả ngày" | "" -> [[start,end], ...] (giờ thập phân, 0-24)
+// "06:00-15:00" | "6h-9h & 17h30-23h30" | "21:00-07:00" | "Cả ngày" | "" -> [[start,end], ...]
+// (giờ thập phân; end CÓ THỂ > 24 khi ca qua đêm, vd 21:00-07:00 -> [21, 31] — người gọi tự tách đoạn).
 function parseHoursSegments(hoursStr) {
   if (!hoursStr || hoursStr === 'Cả ngày') return [[0, 24]];
   return hoursStr.split('&').map(seg => {
     const [a, b] = seg.split('-');
     let s = parseHM(a), e = parseHM(b);
-    if (e <= s) e = 24; // ca qua đêm: cắt tại nửa đêm, xem ghi chú ở đầu file
+    if (e <= s) e += 24; // qua đêm: giữ nguyên độ dài thật, KHÔNG cắt tại nửa đêm
     return [s, e];
   });
 }
 
 function fmtHM(h) {
+  h = ((h % 24) + 24) % 24;
   let hh = Math.floor(h + 1e-9);
   let mm = Math.round((h - hh) * 60);
   if (mm === 60) { mm = 0; hh += 1; }
@@ -35,12 +43,63 @@ function fmtHM(h) {
 
 const TL_WEEKDAY = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
+// Với 7 mã ca/ngày của 1 người, tính ra danh sách đoạn cần vẽ cho MỖI ngày (kể cả đoạn vắt từ hôm trước).
+function buildDaySegments(office, days) {
+  const perDay = days.map(() => []);
+  days.forEach((code, dayIdx) => {
+    const def = shiftDefFor(office, code);
+    const segs = code === REST_CODE ? [[0, 24]] : parseHoursSegments(def.hours);
+    segs.forEach(([s, e]) => {
+      perDay[dayIdx].push({ s, e: Math.min(e, 24), code, carry: false });
+      if (e > 24 && dayIdx + 1 < days.length) {
+        perDay[dayIdx + 1].push({ s: 0, e: e - 24, code, carry: true });
+      }
+    });
+  });
+  return perDay;
+}
+
+function buildBarEl(office, person, p, dayIdx, seg, opts, root) {
+  const { s, e, code, carry } = seg;
+  const def = shiftDefFor(office, code);
+  const bar = document.createElement('div');
+  bar.className = 'tl-bar' + (code === REST_CODE ? ' tl-bar-rest' : '') + (carry ? ' tl-bar-carry' : '');
+  bar.style.setProperty('--c', def.color);
+  bar.style.left = (s / 24 * 100) + '%';
+  bar.style.width = (((e - s) / 24) * 100) + '%';
+  const hmLabel = code === REST_CODE ? 'Nghỉ' : (fmtHM(s) + '–' + fmtHM(e));
+  const wide = (e - s) >= 4;
+  if (carry) {
+    bar.title = `${person.name} — ${def.name}: tiếp tục từ tối hôm trước đến ${fmtHM(e)} (đổi ca này ở ngày hôm trước)`;
+    bar.textContent = wide ? '⋯' + fmtHM(e) : '';
+  } else {
+    bar.title = `${person.name} — ${def.name} (${hmLabel})`;
+    bar.textContent = wide ? hmLabel : (code === REST_CODE ? 'Nghỉ' : '');
+    if (opts.editable) {
+      bar.draggable = true;
+      bar.style.cursor = 'grab';
+      bar.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        openTimelineMenu(root, bar, office, (newCode) => opts.onChange(p.id, dayIdx, newCode));
+      });
+      bar.addEventListener('dragstart', (ev) => {
+        ev.stopPropagation();
+        ev.dataTransfer.setData('text/plain', JSON.stringify({ p: p.id, d: dayIdx }));
+        bar.classList.add('tl-bar-dragging');
+      });
+      bar.addEventListener('dragend', () => bar.classList.remove('tl-bar-dragging'));
+    }
+  }
+  return bar;
+}
+
 /**
  * Vẽ thanh thời gian 1 tuần vào `root` (element rỗng, sẽ bị ghi đè toàn bộ).
  * office, schedule: như suggestWeekSchedule() trả về.
  * dates: mảng 7 Date (Date.UTC) của tuần đang xem.
- * opts.editable: cho bấm vào thanh để đổi ca hay không.
- * opts.onChange(personId, dayIdx, newCode): gọi khi người dùng đổi ca (chỉ khi editable).
+ * opts.editable: cho bấm/kéo vào thanh để đổi ca hay không.
+ * opts.onChange(personId, dayIdx, newCode): gọi khi người dùng đổi ca qua menu.
+ * opts.onSwap(personA, dayA, personB, dayB): gọi khi người dùng kéo-thả đổi chỗ 2 ca.
  */
 function renderTimeline(root, office, schedule, dates, opts) {
   opts = opts || {};
@@ -59,89 +118,91 @@ function renderTimeline(root, office, schedule, dates, opts) {
   });
   root.appendChild(legend);
 
-  // Ruler (7 cột ngày)
-  const rulerRow = document.createElement('div');
-  rulerRow.className = 'tl-row tl-ruler-row';
-  const rulerSpacer = document.createElement('div');
-  rulerSpacer.className = 'tl-name-col';
-  rulerRow.appendChild(rulerSpacer);
+  const split = document.createElement('div');
+  split.className = 'tl-split';
+  root.appendChild(split);
+
+  // ===== Cột tên (không cuộn) =====
+  const namesPane = document.createElement('div');
+  namesPane.className = 'tl-names-pane';
+  split.appendChild(namesPane);
+
+  const namesHeaderSpacer = document.createElement('div');
+  namesHeaderSpacer.className = 'tl-header-cell';
+  namesPane.appendChild(namesHeaderSpacer);
+
+  // ===== Khối lịch (cuộn ngang riêng) =====
+  const scrollPane = document.createElement('div');
+  scrollPane.className = 'tl-scroll-pane';
+  split.appendChild(scrollPane);
+  const scrollInner = document.createElement('div');
+  scrollInner.className = 'tl-scroll-inner';
+  scrollPane.appendChild(scrollInner);
+
   const ruler = document.createElement('div');
-  ruler.className = 'tl-ruler';
+  ruler.className = 'tl-ruler tl-header-cell';
   dates.forEach((d, i) => {
     const cell = document.createElement('div');
     cell.className = 'tl-ruler-cell';
     cell.innerHTML = `${TL_WEEKDAY[i]}<br><span class="date-sub">${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}</span>`;
     ruler.appendChild(cell);
   });
-  rulerRow.appendChild(ruler);
-  root.appendChild(rulerRow);
-
-  // Rows
-  const rowsWrap = document.createElement('div');
-  rowsWrap.className = 'tl-rows';
+  scrollInner.appendChild(ruler);
 
   for (const team of office.teams) {
     const label = document.createElement('div');
     label.className = 'team-row-label';
-    label.textContent = team.id;
-    rowsWrap.appendChild(label);
+    label.textContent = team.name || team.id;
+    namesPane.appendChild(label);
+    const labelSpacer = document.createElement('div');
+    labelSpacer.className = 'team-row-label-spacer';
+    scrollInner.appendChild(labelSpacer);
 
     for (const p of team.people) {
       const person = schedule[p.id];
       if (!person) continue;
-      const row = document.createElement('div');
-      row.className = 'tl-row';
 
-      const nameCol = document.createElement('div');
-      nameCol.className = 'tl-name-col';
-      nameCol.innerHTML = `<div class="tl-name">${person.name}</div>${person.title ? `<div class="title-sub">${person.title}</div>` : ''}`;
-      row.appendChild(nameCol);
+      const nameCell = document.createElement('div');
+      nameCell.className = 'tl-person-row tl-name-cell';
+      nameCell.innerHTML = `<div class="tl-name">${person.name}</div>${person.title ? `<div class="title-sub">${person.title}</div>` : ''}`;
+      namesPane.appendChild(nameCell);
 
       const track = document.createElement('div');
-      track.className = 'tl-track';
-      person.days.forEach((code, dayIdx) => {
+      track.className = 'tl-person-row tl-track';
+      const daySegs = buildDaySegments(office, person.days);
+      daySegs.forEach((segs, dayIdx) => {
         const dayCell = document.createElement('div');
         dayCell.className = 'tl-day-cell';
-        const def = shiftDefFor(office, code);
-        const segs = code === REST_CODE ? [[0, 24]] : parseHoursSegments(def.hours);
-        segs.forEach(([s, e]) => {
-          const bar = document.createElement('div');
-          bar.className = 'tl-bar' + (code === REST_CODE ? ' tl-bar-rest' : '');
-          bar.style.setProperty('--c', def.color);
-          bar.style.left = (s / 24 * 100) + '%';
-          bar.style.width = (((e - s) / 24) * 100) + '%';
-          const hmLabel = code === REST_CODE ? 'Nghỉ' : (fmtHM(s) + '–' + fmtHM(e));
-          bar.title = `${person.name} — ${def.name} (${hmLabel})`;
-          const wide = (e - s) >= 4;
-          bar.textContent = wide ? hmLabel : (code === REST_CODE ? 'Nghỉ' : '');
-          if (opts.editable) {
-            bar.style.cursor = 'pointer';
-            bar.addEventListener('click', (ev) => {
-              ev.stopPropagation();
-              openTimelineMenu(root, bar, office, (newCode) => opts.onChange(p.id, dayIdx, newCode));
-            });
-          }
-          dayCell.appendChild(bar);
-        });
+        segs.forEach(seg => dayCell.appendChild(buildBarEl(office, person, p, dayIdx, seg, opts, root)));
+        if (opts.editable) {
+          dayCell.addEventListener('dragover', (ev) => { ev.preventDefault(); dayCell.classList.add('tl-day-cell-over'); });
+          dayCell.addEventListener('dragleave', () => dayCell.classList.remove('tl-day-cell-over'));
+          dayCell.addEventListener('drop', (ev) => {
+            ev.preventDefault();
+            dayCell.classList.remove('tl-day-cell-over');
+            const src = JSON.parse(ev.dataTransfer.getData('text/plain'));
+            if (src.p === p.id && src.d === dayIdx) return;
+            opts.onSwap && opts.onSwap(src.p, src.d, p.id, dayIdx);
+          });
+        }
         track.appendChild(dayCell);
       });
-      row.appendChild(track);
-      rowsWrap.appendChild(row);
+      scrollInner.appendChild(track);
     }
   }
-  root.appendChild(rowsWrap);
 
   // Biểu đồ sĩ số cả tuần
-  const chartWrap = document.createElement('div');
-  chartWrap.className = 'tl-chart-row';
-  const chartSpacer = document.createElement('div');
-  chartSpacer.className = 'tl-name-col tl-chart-label';
-  chartSpacer.textContent = 'Sĩ số';
-  chartWrap.appendChild(chartSpacer);
+  const chartLabel = document.createElement('div');
+  chartLabel.className = 'tl-chart-label-cell';
+  chartLabel.textContent = 'Sĩ số';
+  namesPane.appendChild(chartLabel);
+
+  const chartCellWrap = document.createElement('div');
+  chartCellWrap.className = 'tl-chart-canvas-cell';
   const canvas = document.createElement('canvas');
   canvas.className = 'tl-chart';
-  chartWrap.appendChild(canvas);
-  root.appendChild(chartWrap);
+  chartCellWrap.appendChild(canvas);
+  scrollInner.appendChild(chartCellWrap);
   drawWeekHeadcountChart(canvas, office, schedule);
 }
 
@@ -177,13 +238,13 @@ function drawWeekHeadcountChart(canvas, office, schedule) {
   const SLOTS = 7 * 48;
   const counts = new Array(SLOTS).fill(0);
   Object.values(schedule).forEach(person => {
-    person.days.forEach((code, dayIdx) => {
-      if (code === REST_CODE) return;
-      const def = shiftDefFor(office, code);
-      parseHoursSegments(def.hours).forEach(([s, e]) => {
+    const daySegs = buildDaySegments(office, person.days);
+    daySegs.forEach((segs, dayIdx) => {
+      segs.forEach(({ s, e, code }) => {
+        if (code === REST_CODE) return;
         const from = Math.round(dayIdx * 48 + s * 2);
         const to = Math.round(dayIdx * 48 + e * 2);
-        for (let k = from; k < to && k < SLOTS; k++) counts[k]++;
+        for (let k = Math.max(0, from); k < to && k < SLOTS; k++) counts[k]++;
       });
     });
   });
