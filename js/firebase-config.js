@@ -4,12 +4,12 @@
 //
 // Lấy các giá trị bên dưới ở: Firebase Console -> Project settings -> General -> "Your apps" -> SDK setup.
 const FIREBASE_CONFIG = {
-  apiKey: '',
-  authDomain: '',
-  projectId: '',
-  storageBucket: '',
-  messagingSenderId: '',
-  appId: '',
+  apiKey: 'AIzaSyCntEpnJ1lSWBZCalNDSUekHYpj0avK97k',
+  authDomain: 'ke-hoach-lam-viec.firebaseapp.com',
+  projectId: 'ke-hoach-lam-viec',
+  storageBucket: 'ke-hoach-lam-viec.firebasestorage.app',
+  messagingSenderId: '118503659720',
+  appId: '1:118503659720:web:d487eaa8d70058ff612dfd',
 };
 
 function isFirebaseConfigured() {
