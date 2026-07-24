@@ -1,5 +1,3 @@
-const WEEKDAY_VN_SHORT = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
-
 const mEls = {
   syncBadge: document.getElementById('syncBadge'),
   prevWeek: document.getElementById('prevWeek'),
@@ -10,7 +8,7 @@ const mEls = {
   wrap: document.getElementById('officesWrap'),
 };
 
-let mMonday = mondayOf(new Date());
+let mMonday = mondayOf(todayUTC());
 let unsubs = [];
 
 function mQs() { return new URLSearchParams(location.search); }
@@ -28,58 +26,32 @@ function renderWeekLabel() {
 }
 
 function officeCardSkeleton() {
-  const dates = weekDates(mMonday);
   mEls.wrap.innerHTML = OFFICES.map(o => `
     <section class="office-card" data-office="${o.id}">
       <h2><a href="office.html?o=${o.id}&w=${isoDate(mMonday)}">${o.name} →</a></h2>
       <div class="office-meta" id="meta-${o.id}">Đang tải…</div>
-      <div class="master-grid-wrap">
-        <table class="schedule-grid">
-          <thead><tr><th class="name-col">Nhân sự</th>${dates.map((d, i) =>
-            `<th>${WEEKDAY_VN_SHORT[i]}<br><span class="date-sub">${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}</span></th>`).join('')}</tr></thead>
-          <tbody id="body-${o.id}"></tbody>
-        </table>
-      </div>
+      <div class="timeline-wrap"><div id="timeline-${o.id}"></div></div>
     </section>
   `).join('');
 }
 
-function renderOfficeBody(office, schedule, meta) {
-  const tbody = document.getElementById(`body-${office.id}`);
+function renderOfficeTimeline(office, schedule, meta) {
+  const root = document.getElementById(`timeline-${office.id}`);
   const metaEl = document.getElementById(`meta-${office.id}`);
-  if (!tbody) return;
+  if (!root) return;
   metaEl.textContent = meta && meta.updatedAt
     ? `Đã lưu lúc ${new Date(meta.updatedAt).toLocaleString('vi-VN')}${meta.updatedBy ? ' bởi ' + meta.updatedBy : ''}`
     : 'Chưa có lịch đã lưu cho tuần này — đang hiện gợi ý tự động.';
-
-  let teamSeen = null;
-  let html = '';
-  for (const team of office.teams) {
-    for (const p of team.people) {
-      const person = schedule[p.id];
-      if (!person) continue;
-      if (team.id !== teamSeen) {
-        teamSeen = team.id;
-        html += `<tr class="team-row"><td colspan="8">${team.id}</td></tr>`;
-      }
-      html += `<tr><td class="name-col">${person.name}${person.title ? `<br><span class="title-sub">${person.title}</span>` : ''}</td>`;
-      person.days.forEach(code => {
-        const def = shiftDefFor(office, code);
-        html += `<td class="cell" style="--c:${def.color}"><span class="chip">${def.code}</span></td>`;
-      });
-      html += '</tr>';
-    }
-  }
-  tbody.innerHTML = html;
+  renderTimeline(root, office, schedule, weekDates(mMonday), { editable: false });
 }
 
-async function loadOffice(office) {
+function loadOffice(office) {
   const weekId = isoDate(mMonday);
   const unsub = StorageAPI.subscribeWeek(office.id, weekId, (saved) => {
     if (saved && saved.assignments) {
-      renderOfficeBody(office, saved.assignments, saved);
+      renderOfficeTimeline(office, saved.assignments, saved);
     } else {
-      renderOfficeBody(office, suggestWeekSchedule(office, mMonday), null);
+      renderOfficeTimeline(office, suggestWeekSchedule(office, mMonday), null);
     }
   });
   unsubs.push(unsub);
@@ -109,7 +81,7 @@ function init() {
 
   const p = mQs();
   const wParam = p.get('w');
-  mMonday = mondayOf(wParam ? new Date(wParam + 'T00:00:00Z') : new Date());
+  mMonday = mondayOf(wParam ? parseISODate(wParam) : todayUTC());
   mSetUrl();
   renderWeekLabel();
 
@@ -118,7 +90,7 @@ function init() {
   mEls.refreshBtn.addEventListener('click', loadAll);
   mEls.weekPicker.addEventListener('change', () => {
     if (!mEls.weekPicker.value) return;
-    mMonday = mondayOf(new Date(mEls.weekPicker.value + 'T00:00:00Z'));
+    mMonday = mondayOf(parseISODate(mEls.weekPicker.value));
     mSetUrl();
     renderWeekLabel();
     loadAll();

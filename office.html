@@ -25,22 +25,24 @@
     </label>
     <button id="regenBtn" class="btn ghost">↻ Tạo lại gợi ý</button>
     <button id="saveBtn" class="btn primary">💾 Lưu lịch tuần</button>
+    <button id="exportBtn" class="btn ghost">📥 Xuất Excel</button>
     <span id="statusText" class="status-text"></span>
   </section>
 
-  <section class="legend" id="legend"></section>
-
-  <section class="grid-wrap">
-    <table class="schedule-grid" id="scheduleGrid"></table>
+  <section class="timeline-wrap">
+    <div id="timeline"></div>
   </section>
 
-  <p class="hint">Kéo một ô ca thả vào ô khác (cùng ngày) để đổi ca cho 2 người. Bấm vào ô để chọn ca khác từ danh sách, kể cả "Nghỉ".</p>
+  <p class="hint">Bấm vào 1 thanh ca để đổi ca cho người đó đúng ngày đó (kể cả đổi thành "Nghỉ"). Thanh thể hiện đúng khung giờ làm việc trong ngày.</p>
 </main>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/offices-data.js"></script>
 <script src="js/scheduler.js"></script>
 <script src="js/storage.js"></script>
+<script src="js/timeline.js"></script>
+<script src="js/export-excel.js"></script>
 <script src="js/office-app.js"></script>

@@ -1,5 +1,3 @@
-const WEEKDAY_VN = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
-
 const els = {
   officeSelect: document.getElementById('officeSelect'),
   syncBadge: document.getElementById('syncBadge'),
@@ -10,9 +8,9 @@ const els = {
   whoInput: document.getElementById('whoInput'),
   regenBtn: document.getElementById('regenBtn'),
   saveBtn: document.getElementById('saveBtn'),
+  exportBtn: document.getElementById('exportBtn'),
   statusText: document.getElementById('statusText'),
-  legend: document.getElementById('legend'),
-  grid: document.getElementById('scheduleGrid'),
+  timeline: document.getElementById('timeline'),
 };
 
 let state = {
@@ -39,13 +37,6 @@ function initOfficeSelect() {
   });
 }
 
-function renderLegend() {
-  const defs = [...state.office.shiftDefs, REST_DEF];
-  els.legend.innerHTML = defs.map(d =>
-    `<span class="chip-legend" style="--c:${d.color}"><b>${d.code}</b> ${d.name}${d.hours ? ' · ' + d.hours : ''}</span>`
-  ).join('');
-}
-
 function renderWeekLabel() {
   const dates = weekDates(state.monday);
   const fmt = d => `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -53,97 +44,15 @@ function renderWeekLabel() {
   els.weekPicker.value = isoDate(state.monday);
 }
 
-function personRows() {
-  const rows = [];
-  for (const team of state.office.teams) {
-    for (const p of team.people) rows.push({ personId: p.id, teamId: team.id });
-  }
-  return rows;
-}
-
-function renderGrid() {
-  const dates = weekDates(state.monday);
-  let teamSeen = null;
-  let html = '<thead><tr><th class="name-col">Nhân sự</th>';
-  dates.forEach((d, i) => {
-    html += `<th>${WEEKDAY_VN[i]}<br><span class="date-sub">${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}</span></th>`;
+function renderTimelineNow() {
+  renderTimeline(els.timeline, state.office, state.schedule, weekDates(state.monday), {
+    editable: true,
+    onChange: (personId, dayIdx, newCode) => {
+      state.schedule[personId].days[dayIdx] = newCode;
+      markDirty();
+      renderTimelineNow();
+    },
   });
-  html += '</tr></thead><tbody>';
-
-  for (const row of personRows()) {
-    const person = state.schedule[row.personId];
-    if (!person) continue;
-    if (row.teamId !== teamSeen) {
-      teamSeen = row.teamId;
-      html += `<tr class="team-row"><td colspan="8">${row.teamId}</td></tr>`;
-    }
-    html += `<tr><td class="name-col">${person.name}${person.title ? `<br><span class="title-sub">${person.title}</span>` : ''}</td>`;
-    person.days.forEach((code, dayIdx) => {
-      const def = shiftDefFor(state.office, code);
-      html += `<td class="cell" data-person="${row.personId}" data-day="${dayIdx}" draggable="true" style="--c:${def.color}">
-        <span class="chip">${def.code}</span>
-      </td>`;
-    });
-    html += '</tr>';
-  }
-  html += '</tbody>';
-  els.grid.innerHTML = html;
-  wireCellEvents();
-}
-
-function wireCellEvents() {
-  const cells = els.grid.querySelectorAll('.cell');
-  cells.forEach(cell => {
-    cell.addEventListener('dragstart', e => {
-      e.dataTransfer.setData('text/plain', JSON.stringify({ p: cell.dataset.person, d: cell.dataset.day }));
-      cell.classList.add('dragging');
-    });
-    cell.addEventListener('dragend', () => cell.classList.remove('dragging'));
-    cell.addEventListener('dragover', e => e.preventDefault());
-    cell.addEventListener('drop', e => {
-      e.preventDefault();
-      const src = JSON.parse(e.dataTransfer.getData('text/plain'));
-      const dst = { p: cell.dataset.person, d: cell.dataset.day };
-      if (src.p === dst.p && src.d === dst.d) return;
-      swapCells(src, dst);
-    });
-    cell.addEventListener('click', () => openPicker(cell));
-  });
-}
-
-function swapCells(src, dst) {
-  const a = state.schedule[src.p].days;
-  const b = state.schedule[dst.p].days;
-  const tmp = a[src.d];
-  a[src.d] = b[dst.d];
-  b[dst.d] = tmp;
-  markDirty();
-  renderGrid();
-}
-
-function openPicker(cell) {
-  const personId = cell.dataset.person;
-  const dayIdx = Number(cell.dataset.day);
-  const defs = [...state.office.shiftDefs, REST_DEF];
-  const select = document.createElement('select');
-  select.className = 'inline-picker';
-  defs.forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d.code;
-    opt.textContent = `${d.code} — ${d.name}`;
-    if (d.code === state.schedule[personId].days[dayIdx]) opt.selected = true;
-    select.appendChild(opt);
-  });
-  cell.innerHTML = '';
-  cell.appendChild(select);
-  select.focus();
-  const commit = () => {
-    state.schedule[personId].days[dayIdx] = select.value;
-    markDirty();
-    renderGrid();
-  };
-  select.addEventListener('change', commit);
-  select.addEventListener('blur', () => renderGrid());
 }
 
 function markDirty() {
@@ -168,8 +77,7 @@ async function loadWeek() {
   }
   state.dirty = false;
   renderWeekLabel();
-  renderLegend();
-  renderGrid();
+  renderTimelineNow();
 }
 
 async function saveWeek() {
@@ -203,7 +111,7 @@ function init() {
   els.officeSelect.value = state.office.id;
 
   const wParam = p.get('w');
-  state.monday = mondayOf(wParam ? new Date(wParam + 'T00:00:00Z') : new Date());
+  state.monday = mondayOf(wParam ? parseISODate(wParam) : todayUTC());
   setUrl();
 
   els.whoInput.value = localStorage.getItem('xeplich:who') || '';
@@ -213,17 +121,27 @@ function init() {
   els.nextWeek.addEventListener('click', () => shiftWeek(7));
   els.weekPicker.addEventListener('change', () => {
     if (!els.weekPicker.value) return;
-    state.monday = mondayOf(new Date(els.weekPicker.value + 'T00:00:00Z'));
+    state.monday = mondayOf(parseISODate(els.weekPicker.value));
     setUrl();
     loadWeek();
   });
   els.regenBtn.addEventListener('click', () => {
-    if (state.dirty && !confirm('Tạo lại gợi ý sẽ ghi đè các thay đổi kéo-thả chưa lưu. Tiếp tục?')) return;
+    if (state.dirty && !confirm('Tạo lại gợi ý sẽ ghi đè các thay đổi chưa lưu. Tiếp tục?')) return;
     state.schedule = suggestWeekSchedule(state.office, state.monday);
     markDirty();
-    renderGrid();
+    renderTimelineNow();
   });
   els.saveBtn.addEventListener('click', saveWeek);
+  els.exportBtn.addEventListener('click', async () => {
+    els.exportBtn.disabled = true;
+    els.exportBtn.textContent = 'Đang tạo file…';
+    try {
+      await exportWeekExcel(state.office, state.schedule, state.monday);
+    } finally {
+      els.exportBtn.disabled = false;
+      els.exportBtn.textContent = '📥 Xuất Excel';
+    }
+  });
 
   window.addEventListener('beforeunload', e => {
     if (state.dirty) { e.preventDefault(); e.returnValue = ''; }

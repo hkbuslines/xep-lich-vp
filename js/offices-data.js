@@ -3,6 +3,7 @@
 // lich_lam_viec_config.json) trong thư mục "Kế hoạch công việc" / "Xếp xe".
 // Sửa trực tiếp file này khi có người vào/ra hoặc đổi khung giờ ca — không cần sửa code khác.
 
+const COMPANY_NAME = 'CÔNG TY TNHH DỊCH VỤ VẬN TẢI VÀ THƯƠNG MẠI HK';
 const REST_CODE = 'NGHI';
 const REST_DEF = { code: REST_CODE, name: 'Nghỉ', hours: '', color: '#e03131' };
 
@@ -84,20 +85,24 @@ const OFFICES = [
       { code: 'CA_CHIEU', name: 'Ca chiều', hours: '12:00-21:00', color: '#E64980' },
       { code: 'RX', name: 'Rửa xe (cả ca)', hours: '07:00-12:00 & 13:00-18:00', color: '#15AABF' },
     ],
+    // Tên đầy đủ: đối chiếu được 3/8 người với "SAPA TẠP VỤ - Chấm công T05.2026.xlsx" (Lò Thị Só,
+    // Chang A Sáu, Giàng A Máng) — 5 người còn lại (Pàng, Dù, Giống, Say, Đức Anh) KHÔNG có trong file
+    // đó (file T05 có 15 người, python config hiện tại (24/07/2026) chỉ còn 6 tạp vụ + 2 rửa xe — có vẻ
+    // đã tinh giản/đổi nhân sự sau tháng 5) nên tạm để nguyên biệt danh, CẦN bổ sung họ tên đầy đủ.
     teams: [
       { id: 'TAPVU', rotateBy: 'day', cycle: ['VP_SANG', 'VP_GAY', 'CA_SANG', 'CA_GIUA', 'CA_CHIEU'], restPerWeek: 1,
         people: [
-          { id: 'TV01', name: 'Pàng' },
-          { id: 'TV02', name: 'Dù' },
-          { id: 'TV03', name: 'Giống' },
-          { id: 'TV04', name: 'Say' },
-          { id: 'TV05', name: 'Só' },
-          { id: 'TV06', name: 'Đức Anh' },
+          { id: 'TV01', name: 'Pàng (cần bổ sung họ tên đầy đủ)' },
+          { id: 'TV02', name: 'Dù (cần bổ sung họ tên đầy đủ)' },
+          { id: 'TV03', name: 'Giống (cần bổ sung họ tên đầy đủ)' },
+          { id: 'TV04', name: 'Say (cần bổ sung họ tên đầy đủ)' },
+          { id: 'TV05', name: 'Lò Thị Só' },
+          { id: 'TV06', name: 'Đức Anh (cần bổ sung họ tên đầy đủ)' },
         ] },
       { id: 'RUAXE', rotateBy: 'fixed', cycle: ['RX'],
         people: [
-          { id: 'RX01', name: 'Máng' },
-          { id: 'RX02', name: 'Sáu' },
+          { id: 'RX01', name: 'Giàng A Máng' },
+          { id: 'RX02', name: 'Chang A Sáu' },
         ] },
     ],
   },

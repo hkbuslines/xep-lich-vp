@@ -4,7 +4,10 @@ Web app xếp lịch làm việc hằng tuần cho từng văn phòng (Tổng Đ
 Lái Xe Trung Chuyển Sapa) — kéo-thả đổi ca ngay trên trình duyệt, cộng thêm 1 trang **master** xem tổng hợp
 lịch của cả 4 văn phòng cùng lúc.
 
-- `office.html?o=<mã văn phòng>` — mỗi văn phòng vào link riêng của mình để xếp/sửa lịch tuần.
+- `office.html?o=<mã văn phòng>` — mỗi văn phòng vào link riêng của mình để xếp/sửa lịch tuần, dạng
+  thanh thời gian (giống UI các file `lich_*.html` cũ) — bấm vào 1 thanh ca để đổi ca, có nút xuất
+  file Excel .xlsx (2 sheet: "Thong so" tóm tắt + "Lich tuan" có tô màu theo ca, giống định dạng các
+  file `.xlsx` do các script `xep_lich_*.py` xuất ra).
 - `index.html` — trang master, xem lịch hiện tại của tất cả văn phòng, chỉ để xem + link sang từng văn phòng để sửa.
 
 Không cần cài đặt gì để chạy — thuần HTML/CSS/JS, mở thẳng bằng trình duyệt hoặc host tĩnh (GitHub Pages).
@@ -66,6 +69,10 @@ Sau đó: vào repo trên GitHub → **Settings → Pages** → "Build and deplo
 Mã văn phòng (`o=`): `tongdai`, `tongdai_sapa`, `tapvu_ruaxe`, `tcsp`.
 
 ## Sửa danh sách nhân sự / ca làm việc
+
+**Cần làm ngay:** đội Tạp Vụ (`tapvu_ruaxe` → team `TAPVU`) hiện có 5/6 người còn để biệt danh
+("Pàng", "Dù", "Giống", "Say", "Đức Anh") vì không tìm được họ tên đầy đủ khớp trong dữ liệu có sẵn —
+mở [`js/offices-data.js`](js/offices-data.js) và điền họ tên thật vào field `name` của từng người.
 
 Toàn bộ nhân sự, mã ca, khung giờ nằm trong [`js/offices-data.js`](js/offices-data.js) — sửa trực tiếp file
 này (thêm/xoá người trong mảng `people`, đổi giờ trong `shiftDefs`), không cần sửa code chỗ khác. Sau khi sửa,

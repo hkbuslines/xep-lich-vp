@@ -5,11 +5,24 @@
 
 const EPOCH_MONDAY = new Date(Date.UTC(2024, 0, 1)); // 2024-01-01 là Thứ 2 — mốc tính "tuần số mấy"
 
+// Mọi Date dùng trong app phải là mốc UTC-midnight đại diện cho 1 ngày lịch (xem parseISODate/todayUTC) —
+// mondayOf() luôn đọc bằng getter UTC để không bị lệch ngày theo múi giờ trình duyệt.
 function mondayOf(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const day = d.getUTCDay() || 7; // Sun=0 -> 7
   if (day !== 1) d.setUTCDate(d.getUTCDate() - (day - 1));
   return d;
+}
+
+// "YYYY-MM-DD" -> Date UTC-midnight, không qua parser timezone của Date() để tránh lệch ngày.
+function parseISODate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d));
+}
+
+function todayUTC() {
+  const now = new Date();
+  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 }
 
 function weekIndexOf(mondayDate) {
