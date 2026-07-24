@@ -206,6 +206,111 @@ function renderTimeline(root, office, schedule, dates, opts) {
   drawWeekHeadcountChart(canvas, office, schedule);
 }
 
+/**
+ * Vẽ thanh thời gian CHỈ 1 NGÀY (tab "Theo ngày") — mỗi người 1 thanh rộng hết khổ, dễ bấm/kéo hơn
+ * để chỉnh hằng ngày, ruler theo giờ (0h-24h) thay vì theo ngày trong tuần.
+ * dateObj: Date của đúng ngày đang xem (chỉ để hiển thị nhãn).
+ * opts giống renderTimeline (onChange/onSwap dùng chung — dayA/dayB luôn bằng dayIdx).
+ */
+function renderDayTimeline(root, office, schedule, dayIdx, dateObj, opts) {
+  opts = opts || {};
+  root.innerHTML = '';
+  root.className = 'tl-root';
+
+  const legend = document.createElement('div');
+  legend.className = 'tl-legend';
+  [...office.shiftDefs, REST_DEF].forEach(d => {
+    const chip = document.createElement('span');
+    chip.className = 'tl-legend-chip';
+    chip.style.setProperty('--c', d.color);
+    chip.innerHTML = `<span class="tl-legend-dot"></span>${d.name}${d.hours ? ' · ' + d.hours : ''}`;
+    legend.appendChild(chip);
+  });
+  root.appendChild(legend);
+
+  const split = document.createElement('div');
+  split.className = 'tl-split';
+  root.appendChild(split);
+
+  const namesPane = document.createElement('div');
+  namesPane.className = 'tl-names-pane';
+  split.appendChild(namesPane);
+  const namesHeaderSpacer = document.createElement('div');
+  namesHeaderSpacer.className = 'tl-header-cell';
+  namesPane.appendChild(namesHeaderSpacer);
+
+  const scrollPane = document.createElement('div');
+  scrollPane.className = 'tl-scroll-pane';
+  split.appendChild(scrollPane);
+  const scrollInner = document.createElement('div');
+  scrollInner.className = 'tl-scroll-inner tl-scroll-inner-day';
+  scrollPane.appendChild(scrollInner);
+
+  const hourRuler = document.createElement('div');
+  hourRuler.className = 'tl-hour-ruler tl-header-cell';
+  for (let h = 0; h <= 24; h += 3) {
+    const tick = document.createElement('span');
+    tick.className = 'tl-hour-tick';
+    tick.style.left = (h / 24 * 100) + '%';
+    tick.textContent = h + 'h';
+    hourRuler.appendChild(tick);
+  }
+  scrollInner.appendChild(hourRuler);
+
+  for (const team of office.teams) {
+    const label = document.createElement('div');
+    label.className = 'team-row-label';
+    label.textContent = team.name || team.id;
+    namesPane.appendChild(label);
+    const labelSpacer = document.createElement('div');
+    labelSpacer.className = 'team-row-label-spacer';
+    scrollInner.appendChild(labelSpacer);
+
+    for (const p of team.people) {
+      const person = schedule[p.id];
+      if (!person) continue;
+
+      const nameCell = document.createElement('div');
+      nameCell.className = 'tl-person-row tl-name-cell';
+      nameCell.innerHTML = `<div class="tl-name">${person.name}</div>${person.title ? `<div class="title-sub">${person.title}</div>` : ''}`;
+      namesPane.appendChild(nameCell);
+
+      const track = document.createElement('div');
+      track.className = 'tl-person-row tl-track';
+      const daySegs = buildDaySegments(office, person.days);
+      const dayCell = document.createElement('div');
+      dayCell.className = 'tl-day-cell';
+      daySegs[dayIdx].forEach(seg => dayCell.appendChild(buildBarEl(office, person, p, dayIdx, seg, opts, root)));
+      if (opts.editable) {
+        dayCell.addEventListener('dragover', (ev) => { ev.preventDefault(); dayCell.classList.add('tl-day-cell-over'); });
+        dayCell.addEventListener('dragleave', () => dayCell.classList.remove('tl-day-cell-over'));
+        dayCell.addEventListener('drop', (ev) => {
+          ev.preventDefault();
+          dayCell.classList.remove('tl-day-cell-over');
+          const src = JSON.parse(ev.dataTransfer.getData('text/plain'));
+          if (src.p === p.id && src.d === dayIdx) return;
+          opts.onSwap && opts.onSwap(src.p, src.d, p.id, dayIdx);
+        });
+      }
+      track.appendChild(dayCell);
+      scrollInner.appendChild(track);
+    }
+  }
+
+  const chartLabel = document.createElement('div');
+  chartLabel.className = 'tl-chart-label-cell';
+  chartLabel.textContent = 'Sĩ số';
+  namesPane.appendChild(chartLabel);
+
+  const chartCellWrap = document.createElement('div');
+  chartCellWrap.className = 'tl-chart-canvas-cell';
+  const canvas = document.createElement('canvas');
+  canvas.className = 'tl-chart';
+  chartCellWrap.appendChild(canvas);
+  scrollInner.appendChild(chartCellWrap);
+  drawDayHeadcountChart(canvas, office, schedule, dayIdx);
+}
+
 let tlOpenMenu = null;
 function closeTimelineMenu() { if (tlOpenMenu) { tlOpenMenu.remove(); tlOpenMenu = null; } }
 document.addEventListener('click', closeTimelineMenu);
@@ -248,7 +353,26 @@ function drawWeekHeadcountChart(canvas, office, schedule) {
       });
     });
   });
+  drawHeadcountChart(canvas, counts, 7);
+}
 
+function drawDayHeadcountChart(canvas, office, schedule, dayIdx) {
+  const SLOTS = 48;
+  const counts = new Array(SLOTS).fill(0);
+  Object.values(schedule).forEach(person => {
+    const daySegs = buildDaySegments(office, person.days);
+    daySegs[dayIdx].forEach(({ s, e, code }) => {
+      if (code === REST_CODE) return;
+      const from = Math.round(s * 2);
+      const to = Math.round(e * 2);
+      for (let k = Math.max(0, from); k < to && k < SLOTS; k++) counts[k]++;
+    });
+  });
+  drawHeadcountChart(canvas, counts, 4);
+}
+
+function drawHeadcountChart(canvas, counts, gridDivisions) {
+  const SLOTS = counts.length;
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
   const w = rect.width || canvas.parentElement.clientWidth || 600;
@@ -269,8 +393,8 @@ function drawWeekHeadcountChart(canvas, office, schedule) {
   const plotW = W - pad.l - pad.r, plotH = H - pad.t - pad.b;
 
   ctx.strokeStyle = lineCol; ctx.lineWidth = 1;
-  for (let d = 0; d <= 7; d++) {
-    const x = pad.l + (d / 7) * plotW;
+  for (let d = 0; d <= gridDivisions; d++) {
+    const x = pad.l + (d / gridDivisions) * plotW;
     ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, pad.t + plotH); ctx.stroke();
   }
 
