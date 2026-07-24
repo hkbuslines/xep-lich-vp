@@ -1,0 +1,29 @@
+<meta charset="UTF-8">
+<title>Lịch làm việc — Tổng hợp tất cả văn phòng</title>
+<link rel="stylesheet" href="css/style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<header class="topbar">
+  <span class="brand">📋 Lịch làm việc — Tổng hợp tất cả văn phòng</span>
+  <div class="sync-badge" id="syncBadge">—</div>
+</header>
+
+<main>
+  <section class="week-nav">
+    <button id="prevWeek" class="btn ghost">‹ Tuần trước</button>
+    <div class="week-label" id="weekLabel">—</div>
+    <button id="nextWeek" class="btn ghost">Tuần sau ›</button>
+    <input id="weekPicker" type="date" title="Chọn ngày bất kỳ trong tuần">
+    <button id="refreshBtn" class="btn ghost">↻ Làm mới</button>
+  </section>
+
+  <div id="officesWrap"></div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/offices-data.js"></script>
+<script src="js/scheduler.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/master-app.js"></script>
