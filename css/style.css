@@ -189,3 +189,24 @@ main { max-width: 1400px; margin: 0 auto; padding: 16px 20px 60px; }
 .office-card h2 a:hover { color: var(--accent); }
 .office-meta { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
 .office-card .timeline-wrap { border: none; padding: 0; }
+
+/* Modal "Danh sách nhân viên" — chỉ xem, không phải form thêm nhân viên qua giao diện. */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: flex;
+  align-items: center; justify-content: center; padding: 20px; z-index: 100;
+}
+.modal-overlay[hidden] { display: none; }
+.modal-box {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 12px; max-width: 640px;
+  width: 100%; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-head {
+  display: flex; align-items: center; justify-content: space-between; padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-head h2 { margin: 0; font-size: 16px; }
+.modal-body { padding: 12px 18px 18px; overflow-y: auto; }
+.staff-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.staff-table th, .staff-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
+.staff-table th { color: var(--muted); font-weight: 600; font-size: 12px; }
+.staff-table tbody tr:hover { background: var(--card); }

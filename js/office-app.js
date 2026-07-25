@@ -23,6 +23,10 @@ const els = {
   statusText: document.getElementById('statusText'),
   timeline: document.getElementById('timeline'),
   hintText: document.getElementById('hintText'),
+  staffListBtn: document.getElementById('staffListBtn'),
+  staffListOverlay: document.getElementById('staffListOverlay'),
+  staffListCloseBtn: document.getElementById('staffListCloseBtn'),
+  staffListBody: document.getElementById('staffListBody'),
 };
 
 let state = {
@@ -56,6 +60,30 @@ function renderWeekLabel() {
   const fmt = d => `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
   els.weekLabel.textContent = `Tuần ${fmt(dates[0])} – ${fmt(dates[6])}/${dates[6].getUTCFullYear()}`;
   els.weekPicker.value = isoDate(state.monday);
+}
+
+// Danh sách nhân viên — CHỈ XEM, đọc trực tiếp từ office.teams (offices-data.js), không phải form
+// thêm nhân viên qua giao diện; thêm nhân viên mới vẫn sửa trực tiếp offices-data.js rồi push code.
+function renderStaffList() {
+  let stt = 0;
+  const rows = [];
+  for (const team of state.office.teams) {
+    for (const p of team.people) {
+      stt += 1;
+      rows.push(`<tr><td>${stt}</td><td>${p.id.startsWith('HK') ? p.id : ''}</td><td>${p.name}</td>`
+        + `<td>${team.name || team.id}</td><td>${p.title || ''}</td></tr>`);
+    }
+  }
+  els.staffListBody.innerHTML = rows.join('');
+}
+
+function openStaffList() {
+  renderStaffList();
+  els.staffListOverlay.hidden = false;
+}
+
+function closeStaffList() {
+  els.staffListOverlay.hidden = true;
 }
 
 function renderDayStrip() {
@@ -204,11 +232,23 @@ function onNoteChange(personId, dayIdx, value) {
   if (!state.dirty) markDirty();
 }
 
+// Theo dõi TRỰC TIẾP qua StorageAPI.subscribeWeek — ai bấm Lưu, người khác đang mở đúng văn
+// phòng/tuần đó thấy cập nhật ngay, không cần tải lại trang (giống trang Tổng hợp). Nếu đang có
+// thay đổi CHƯA LƯU cục bộ (state.dirty), KHÔNG tự ghi đè — chỉ báo có bản mới hơn, để không mất
+// thao tác đang gõ dở của chính người đó khi người khác lưu cùng lúc.
 async function loadWeek() {
   const weekId = isoDate(state.monday);
   if (state.unsub) { state.unsub(); state.unsub = null; }
   els.statusText.textContent = 'Đang tải…';
-  const saved = await StorageAPI.loadWeek(state.office.id, weekId);
+  state.unsub = StorageAPI.subscribeWeek(state.office.id, weekId, (saved) => applyWeekSnapshot(saved));
+}
+
+function applyWeekSnapshot(saved) {
+  if (state.dirty) {
+    els.statusText.textContent = 'Có người khác vừa lưu bản mới — bấm Lưu để ghi đè bằng thay đổi của bạn, hoặc tải lại trang để xem bản mới nhất.';
+    els.statusText.className = 'status-text dirty';
+    return;
+  }
   if (saved && saved.assignments) {
     state.schedule = normalizeSchedule(saved.assignments);
     els.statusText.textContent = `Đã lưu lúc ${new Date(saved.updatedAt).toLocaleString('vi-VN')}${saved.updatedBy ? ' bởi ' + saved.updatedBy : ''}`;
@@ -295,6 +335,11 @@ function init() {
   // Mặc định mở đúng ngày hôm nay nếu tuần đang xem chứa hôm nay, ngược lại mở Thứ 2.
   const todayOffset = Math.round((today - state.monday) / 86400000);
   state.dayIdx = (todayOffset >= 0 && todayOffset <= 6) ? todayOffset : 0;
+
+  els.staffListBtn.addEventListener('click', openStaffList);
+  els.staffListCloseBtn.addEventListener('click', closeStaffList);
+  els.staffListOverlay.addEventListener('click', (ev) => { if (ev.target === els.staffListOverlay) closeStaffList(); });
+  document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !els.staffListOverlay.hidden) closeStaffList(); });
 
   els.tabDayBtn.addEventListener('click', () => switchViewMode('day'));
   els.tabWeekBtn.addEventListener('click', () => switchViewMode('week'));

@@ -68,14 +68,14 @@ const OFFICES = [
       { id: 'TO1', name: 'Tổ 1', rotateBy: 'week', cycle: ['CA_S', 'CA_C'], cycleOffset: 0,
         people: [
           { id: 'HK0118', name: 'Nguyễn Tuấn Linh', title: 'Trưởng ca' },
-          { id: 'HK0171', name: 'Trần Thị Phương Lan' },
           { id: 'HK0314', name: 'Nguyễn Thị Tú Uyên' },
+          { id: 'HK0286', name: 'Lê Anh Quân' },
         ] },
       { id: 'TO2', name: 'Tổ 2', rotateBy: 'week', cycle: ['CA_S', 'CA_C'], cycleOffset: 1,
         people: [
           { id: 'HK0017', name: 'Phạm Thị Thu Phương', title: 'Trưởng ca' },
-          { id: 'HK0286', name: 'Lê Anh Quân' },
           { id: 'HK0462', name: 'Phạm Hữu Hiếu' },
+          { id: 'HOANGTHANHHAI', name: 'Hoàng Thanh Hải' }, // chưa có mã NV chính thức, điền sau
         ] },
       { id: 'DPTC', name: 'Điều phối trung chuyển', rotateBy: 'fixed', cycle: ['DPTC'],
         people: [{ id: 'HK0175', name: 'Hoàng Thị Ánh Phương', title: 'Điều phối trung chuyển' }] },
@@ -92,11 +92,14 @@ const OFFICES = [
       { code: 'CA_GIUA', name: 'Ca giữa', hours: '09:00-18:00', color: '#F08C00' },
       { code: 'CA_CHIEU', name: 'Ca chiều', hours: '12:00-21:00', color: '#E64980' },
       { code: 'RX', name: 'Rửa xe (cả ca)', hours: '07:00-12:00 & 13:00-18:00', color: '#15AABF' },
+      { code: 'HC', name: 'Hành chính', hours: '08:00-17:00', color: '#868E96' },
     ],
     // Tên đầy đủ: lấy từ "Xếp xe/lich_lam_viec_tapvu_config.json" — roster chốt theo xác nhận
     // 22/07/2026 (mã NV thật SAPA015/SAPA022/SAPA007 chưa có cho 5 người còn lại, cần HR bổ sung
     // trước khi dùng file chấm công thật, tạm dùng mã nội bộ TV0x/RX0x của app này).
     teams: [
+      { id: 'QL', name: 'Quản lý', rotateBy: 'fixed', cycle: ['HC'], dayOff: [7],
+        people: [{ id: 'HK0171', name: 'Trần Thị Phương Lan', title: 'Quản lý' }] },
       { id: 'TAPVU', name: 'Tạp vụ', rotateBy: 'day', cycle: ['VP_SANG', 'VP_GAY', 'CA_SANG', 'CA_GIUA', 'CA_CHIEU'], restPerWeek: 1,
         people: [
           { id: 'TV01', name: 'Giàng Thị Pàng' },
