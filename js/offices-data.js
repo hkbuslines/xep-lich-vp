@@ -11,6 +11,7 @@ const OFFICES = [
   {
     id: 'tongdai',
     name: 'Tổng Đài VP',
+    standardHoursPerDay: 9, // đủ 9h/ngày = 1 công chính, vượt = 0.1 công/giờ tăng ca (sheet Cham cong)
     shiftDefs: [
       { code: 'CA1', name: 'Ca 1 (Sáng)', hours: '06:00-15:00', color: '#4C6EF5' },
       { code: 'CA2', name: 'Ca 2 (Chiều-Tối)', hours: '15:00-24:00', color: '#2F9E44' },
@@ -52,6 +53,7 @@ const OFFICES = [
   {
     id: 'tongdai_sapa',
     name: 'Tổng Đài Sapa',
+    standardHoursPerDay: 9,
     shiftDefs: [
       { code: 'CA_S', name: 'Ca Sáng', hours: '05:00-14:00', color: '#4C6EF5' },
       { code: 'CA_C', name: 'Ca Chiều', hours: '14:00-23:30', color: '#F08C00' },
@@ -77,6 +79,7 @@ const OFFICES = [
   {
     id: 'tapvu_ruaxe',
     name: 'Tạp Vụ & Rửa Xe Sapa',
+    standardHoursPerDay: 9,
     shiftDefs: [
       { code: 'VP_SANG', name: 'VP sáng', hours: '06:00-15:00', color: '#4C6EF5' },
       { code: 'VP_GAY', name: 'VP ca gãy', hours: '6h-9h & 17h30-23h30', color: '#5F3DC4' },
@@ -99,7 +102,9 @@ const OFFICES = [
           { id: 'TV05', name: 'Lò Thị Só' },
           { id: 'TV06', name: 'Đức Anh (cần bổ sung họ tên đầy đủ)' },
         ] },
-      { id: 'RUAXE', name: 'Rửa xe', rotateBy: 'fixed', cycle: ['RX'],
+      // noOvertime: rửa xe làm đủ 1 ngày công chuẩn 10h dù chỉ trực ~5h/ca — KHÔNG tính giờ vượt
+      // thành tăng ca (giống branch 'rx' trong xep_lich_tapvu_rua_xe.py) — chấm công chỉ đếm có/không đi làm.
+      { id: 'RUAXE', name: 'Rửa xe', rotateBy: 'fixed', cycle: ['RX'], noOvertime: true,
         people: [
           { id: 'RX01', name: 'Giàng A Máng' },
           { id: 'RX02', name: 'Chang A Sáu' },
@@ -109,6 +114,7 @@ const OFFICES = [
   {
     id: 'tcsp',
     name: 'Lái Xe Trung Chuyển Sapa',
+    standardHoursPerDay: null, // lái xe chấm công theo NGÀY được phân xe (không tính giờ tăng ca theo giờ)
     shiftDefs: [
       { code: 'XE1', name: 'Xe 1', hours: 'Cả ngày', color: '#4C6EF5' },
       { code: 'XE2', name: 'Xe 2', hours: 'Cả ngày', color: '#2F9E44' },
@@ -118,7 +124,8 @@ const OFFICES = [
       { code: 'XE6', name: 'Xe 6', hours: 'Cả ngày', color: '#5F3DC4' },
     ],
     teams: [
-      { id: 'LAIXE', name: 'Lái xe', rotateBy: 'day', cycle: ['XE1', 'XE2', 'XE3', 'XE4', 'XE5', 'XE6', REST_CODE, REST_CODE],
+      { id: 'LAIXE', name: 'Lái xe', rotateBy: 'day', noOvertime: true,
+        cycle: ['XE1', 'XE2', 'XE3', 'XE4', 'XE5', 'XE6', REST_CODE, REST_CODE],
         people: [
           { id: 'HK0125', name: 'Nguyễn Văn Đức' },
           { id: 'HK0471', name: 'Nguyễn Duy Đức' },

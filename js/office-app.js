@@ -17,6 +17,8 @@ const els = {
   regenBtn: document.getElementById('regenBtn'),
   saveBtn: document.getElementById('saveBtn'),
   exportBtn: document.getElementById('exportBtn'),
+  monthPicker: document.getElementById('monthPicker'),
+  exportMonthBtn: document.getElementById('exportMonthBtn'),
   statusText: document.getElementById('statusText'),
   timeline: document.getElementById('timeline'),
   hintText: document.getElementById('hintText'),
@@ -283,7 +285,24 @@ function init() {
       await exportWeekExcel(state.office, state.schedule, state.monday);
     } finally {
       els.exportBtn.disabled = false;
-      els.exportBtn.textContent = '📥 Xuất Excel';
+      els.exportBtn.textContent = '📥 Xuất Excel tuần';
+    }
+  });
+
+  els.monthPicker.value = isoDate(state.monday).slice(0, 7);
+  els.exportMonthBtn.addEventListener('click', async () => {
+    const [y, m] = els.monthPicker.value.split('-').map(Number);
+    if (!y || !m) { alert('Chọn tháng cần xuất trước đã.'); return; }
+    els.exportMonthBtn.disabled = true;
+    els.exportMonthBtn.textContent = 'Đang gộp lịch cả tháng…';
+    try {
+      await exportMonthExcel(state.office, y, m);
+    } catch (err) {
+      console.error(err);
+      alert('Xuất file tháng bị lỗi: ' + err.message);
+    } finally {
+      els.exportMonthBtn.disabled = false;
+      els.exportMonthBtn.textContent = '📊 Xuất Lịch + Chấm công tháng';
     }
   });
 

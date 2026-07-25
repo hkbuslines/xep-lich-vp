@@ -36,8 +36,15 @@
     </label>
     <button id="regenBtn" class="btn ghost">↻ Tạo lại gợi ý</button>
     <button id="saveBtn" class="btn primary">💾 Lưu lịch tuần</button>
-    <button id="exportBtn" class="btn ghost">📥 Xuất Excel</button>
+    <button id="exportBtn" class="btn ghost">📥 Xuất Excel tuần</button>
     <span id="statusText" class="status-text"></span>
+  </section>
+
+  <section class="toolbar">
+    <label class="who-label">Xuất file tháng:
+      <input id="monthPicker" type="month">
+    </label>
+    <button id="exportMonthBtn" class="btn ghost">📊 Xuất Lịch + Chấm công tháng</button>
   </section>
 
   <section class="timeline-wrap">
@@ -56,4 +63,5 @@
 <script src="js/storage.js"></script>
 <script src="js/timeline.js"></script>
 <script src="js/export-excel.js"></script>
+<script src="js/export-excel-month.js"></script>
 <script src="js/office-app.js"></script>

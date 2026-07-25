@@ -7,9 +7,16 @@ lịch của cả 4 văn phòng cùng lúc.
 - `office.html?o=<mã văn phòng>` — mỗi văn phòng vào link riêng của mình để xếp/sửa lịch, dạng
   thanh thời gian (giống UI các file `lich_*.html` cũ). Có 2 tab: **"Theo ngày"** (mặc định, mở đúng
   hôm nay — có day-strip chuyển ngày, để hằng ngày vào chỉnh) và **"Theo tuần"** (xem/sửa cả 7 ngày
-  cùng lúc). Bấm vào 1 thanh ca để đổi ca, kéo-thả để đổi chỗ 2 ca, có nút xuất file Excel .xlsx
-  (2 sheet: "Thong so" tóm tắt + "Lich tuan" có tô màu theo ca, giống định dạng các file `.xlsx` do
-  các script `xep_lich_*.py` xuất ra).
+  cùng lúc). Bấm vào 1 thanh ca để đổi ca, kéo-thả để đổi chỗ 2 ca, có 2 nút xuất Excel:
+  - **"Xuất Excel tuần"** — 2 sheet ("Thong so" tóm tắt + "Lich tuan" có tô màu theo ca), đúng 1 tuần
+    đang xem.
+  - **"Xuất Lịch + Chấm công tháng"** — chọn 1 tháng bất kỳ, gộp toàn bộ các tuần đã lưu trong tháng đó
+    thành 2 sheet: **"Lich thang MM"** (lịch làm việc, mỗi ô ghi khung giờ "HH:MM-HH:MM") và
+    **"Cham cong thang MM"** — đúng định dạng bảng chấm công thật của công ty (STT/Mã NV/Họ &
+    Tên/Chức danh/Ngày vào + cột theo từng ngày + ĐI LÀM/CÔNG LÀM THÊM/TỔNG CÔNG). Toàn bộ ô trong
+    "Cham cong" là **CÔNG THỨC Excel** tham chiếu sang "Lich thang" (giống cách `xep_lich_tapvu_rua_xe.py`
+    và `xep_lich_lam_viec.py` đã làm) — sửa giờ trực tiếp trong "Lich thang" (kể cả mở lại file bằng
+    Excel sau này, không cần quay lại web) thì "Cham cong" tự tính lại ngay, không cần xuất lại file.
 - `index.html` — trang master, xem lịch hiện tại của tất cả văn phòng, chỉ để xem + link sang từng văn phòng để sửa.
 
 Không cần cài đặt gì để chạy — thuần HTML/CSS/JS, mở thẳng bằng trình duyệt hoặc host tĩnh (GitHub Pages).
