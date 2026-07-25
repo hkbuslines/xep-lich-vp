@@ -88,19 +88,18 @@ const OFFICES = [
       { code: 'CA_CHIEU', name: 'Ca chiều', hours: '12:00-21:00', color: '#E64980' },
       { code: 'RX', name: 'Rửa xe (cả ca)', hours: '07:00-12:00 & 13:00-18:00', color: '#15AABF' },
     ],
-    // Tên đầy đủ: đối chiếu được 3/8 người với "SAPA TẠP VỤ - Chấm công T05.2026.xlsx" (Lò Thị Só,
-    // Chang A Sáu, Giàng A Máng) — 5 người còn lại (Pàng, Dù, Giống, Say, Đức Anh) KHÔNG có trong file
-    // đó (file T05 có 15 người, python config hiện tại (24/07/2026) chỉ còn 6 tạp vụ + 2 rửa xe — có vẻ
-    // đã tinh giản/đổi nhân sự sau tháng 5) nên tạm để nguyên biệt danh, CẦN bổ sung họ tên đầy đủ.
+    // Tên đầy đủ: lấy từ "Xếp xe/lich_lam_viec_tapvu_config.json" — roster chốt theo xác nhận
+    // 22/07/2026 (mã NV thật SAPA015/SAPA022/SAPA007 chưa có cho 5 người còn lại, cần HR bổ sung
+    // trước khi dùng file chấm công thật, tạm dùng mã nội bộ TV0x/RX0x của app này).
     teams: [
       { id: 'TAPVU', name: 'Tạp vụ', rotateBy: 'day', cycle: ['VP_SANG', 'VP_GAY', 'CA_SANG', 'CA_GIUA', 'CA_CHIEU'], restPerWeek: 1,
         people: [
-          { id: 'TV01', name: 'Pàng (cần bổ sung họ tên đầy đủ)' },
-          { id: 'TV02', name: 'Dù (cần bổ sung họ tên đầy đủ)' },
-          { id: 'TV03', name: 'Giống (cần bổ sung họ tên đầy đủ)' },
-          { id: 'TV04', name: 'Say (cần bổ sung họ tên đầy đủ)' },
+          { id: 'TV01', name: 'Giàng Thị Pàng' },
+          { id: 'TV02', name: 'Má Thị Dù' },
+          { id: 'TV03', name: 'Giàng Thị Giống' },
+          { id: 'TV04', name: 'Lý Thị Say' },
           { id: 'TV05', name: 'Lò Thị Só' },
-          { id: 'TV06', name: 'Đức Anh (cần bổ sung họ tên đầy đủ)' },
+          { id: 'TV06', name: 'Phạm Lê Đức Anh' },
         ] },
       // noOvertime: rửa xe làm đủ 1 ngày công chuẩn 10h dù chỉ trực ~5h/ca — KHÔNG tính giờ vượt
       // thành tăng ca (giống branch 'rx' trong xep_lich_tapvu_rua_xe.py) — chấm công chỉ đếm có/không đi làm.
