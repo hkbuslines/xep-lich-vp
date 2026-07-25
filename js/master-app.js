@@ -45,16 +45,28 @@ function renderOfficeTimeline(office, schedule, meta) {
   renderTimeline(root, office, schedule, weekDates(mMonday), { editable: false });
 }
 
+// Theo dõi CẢ roster (danh sách nhân viên) lẫn lịch tuần — sửa roster ở office.html thì trang tổng
+// hợp cũng tự cập nhật ngay, không cần bấm "Làm mới"/tải lại trang.
 function loadOffice(office) {
   const weekId = isoDate(mMonday);
-  const unsub = StorageAPI.subscribeWeek(office.id, weekId, (saved) => {
-    if (saved && saved.assignments) {
-      renderOfficeTimeline(office, saved.assignments, saved);
+  let lastSaved;
+  const renderCurrent = () => {
+    if (lastSaved === undefined) return; // chưa có snapshot lịch tuần nào cả, chờ subscribeWeek bắn lần đầu
+    if (lastSaved && lastSaved.assignments) {
+      renderOfficeTimeline(office, normalizeSchedule(lastSaved.assignments, office), lastSaved);
     } else {
       renderOfficeTimeline(office, office.manualOnly ? blankWeekSchedule(office) : suggestWeekSchedule(office, mMonday), null);
     }
+  };
+  const rosterUnsub = StorageAPI.subscribeRoster(office.id, (rosterDoc) => {
+    applyRosterOverride(office, rosterDoc);
+    renderCurrent();
   });
-  unsubs.push(unsub);
+  const unsub = StorageAPI.subscribeWeek(office.id, weekId, (saved) => {
+    lastSaved = saved;
+    renderCurrent();
+  });
+  unsubs.push(unsub, rosterUnsub);
 }
 
 function loadAll() {

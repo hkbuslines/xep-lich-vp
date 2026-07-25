@@ -19,12 +19,18 @@
       <button id="staffListCloseBtn" class="round-btn" aria-label="Đóng">×</button>
     </div>
     <div class="modal-body">
+      <p class="hint" style="margin-top:0">Sửa trực tiếp rồi bấm "Lưu danh sách" — áp dụng ngay cho lịch xếp, chấm công, xuất Excel ở mọi nơi, kể cả tuần đã lưu trước đó.</p>
       <table class="staff-table">
         <thead>
-          <tr><th>STT</th><th>Mã NV</th><th>Họ tên</th><th>Tổ/Đội</th><th>Chức danh</th></tr>
+          <tr><th>STT</th><th>Mã NV</th><th>Họ tên</th><th>Tổ/Đội</th><th>Chức danh</th><th></th></tr>
         </thead>
         <tbody id="staffListBody"></tbody>
       </table>
+      <button id="staffAddRowBtn" class="btn ghost" style="margin-top:10px">+ Thêm nhân viên</button>
+    </div>
+    <div class="modal-foot">
+      <span id="staffListStatus" class="status-text"></span>
+      <button id="staffListSaveBtn" class="btn primary">💾 Lưu danh sách</button>
     </div>
   </div>
 </div>

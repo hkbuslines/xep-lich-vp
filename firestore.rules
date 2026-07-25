@@ -7,6 +7,11 @@ service cloud.firestore {
     match /schedules/{docId} {
       allow read, write: if true;
     }
+    // Danh sách nhân viên (roster) — ghi đè office.teams[].people tĩnh trong offices-data.js, sửa
+    // qua modal "Danh sách nhân viên" trên office.html. Cùng mức bảo mật như "schedules" ở trên.
+    match /rosters/{docId} {
+      allow read, write: if true;
+    }
     match /{document=**} {
       allow read, write: if false;
     }

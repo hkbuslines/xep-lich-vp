@@ -127,6 +127,32 @@ function blankWeekSchedule(office) {
   return result;
 }
 
+// Lịch lưu từ trước khi có tính năng kéo-giãn giờ có thể chưa có field `ranges` — bổ sung cho đủ 7 ô
+// null để buildDaySegments/effectiveRanges không bị lỗi thiếu dữ liệu. Đồng thời bổ sung "Nghỉ" cho
+// BẤT KỲ ai đang có trong office.teams (kể cả người MỚI THÊM sau khi tuần này đã lưu, qua modal
+// "Danh sách nhân viên") nhưng chưa có trong bản lưu — để nhân viên mới hiện ra ngay cả ở những tuần
+// đã chốt từ trước, theo đúng yêu cầu "danh sách nhân viên sửa thì tự cập nhật khắp nơi". Dùng chung
+// cho office.html (office-app.js), index.html (master-app.js), và xuất Excel (export-excel-month.js).
+function normalizeSchedule(schedule, office) {
+  Object.values(schedule).forEach(p => {
+    if (!Array.isArray(p.ranges)) p.ranges = new Array(7).fill(null);
+    if (!Array.isArray(p.notes)) p.notes = new Array(7).fill('');
+  });
+  if (office) {
+    for (const team of office.teams) {
+      for (const person of team.people) {
+        if (!schedule[person.id]) {
+          schedule[person.id] = {
+            name: person.name, title: person.title || '', teamId: team.id,
+            days: new Array(7).fill(REST_CODE), ranges: new Array(7).fill(null), notes: new Array(7).fill(''),
+          };
+        }
+      }
+    }
+  }
+  return schedule;
+}
+
 function shiftDefFor(office, code) {
   if (code === REST_CODE) return REST_DEF;
   return office.shiftDefs.find(s => s.code === code) || { code, name: code, hours: '', color: '#999' };

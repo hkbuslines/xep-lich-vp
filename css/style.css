@@ -210,3 +210,14 @@ main { max-width: 1400px; margin: 0 auto; padding: 16px 20px 60px; }
 .staff-table th, .staff-table td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); }
 .staff-table th { color: var(--muted); font-weight: 600; font-size: 12px; }
 .staff-table tbody tr:hover { background: var(--card); }
+.staff-table td input[type=text] { width: 100%; min-width: 90px; font-size: 13px; padding: 5px 7px; }
+.staff-table td select { width: 100%; font-size: 13px; padding: 5px 7px; }
+.staff-row-remove {
+  width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); background: var(--card);
+  color: var(--muted); cursor: pointer; font-size: 13px; line-height: 1;
+}
+.staff-row-remove:hover { border-color: #e03131; color: #e03131; }
+.modal-foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+  padding: 12px 18px; border-top: 1px solid var(--border);
+}

@@ -65,13 +65,13 @@ const OFFICES = [
       { code: 'DPTC', name: 'Điều phối trung chuyển', hours: '06:00-14:00 & 20:00-23:30', color: '#868E96' },
     ],
     teams: [
-      { id: 'TO1', name: 'Tổ 1', rotateBy: 'week', cycle: ['CA_S', 'CA_C'], cycleOffset: 0,
+      { id: 'TO1', name: 'Tổ 2', rotateBy: 'week', cycle: ['CA_S', 'CA_C'], cycleOffset: 0,
         people: [
           { id: 'HK0118', name: 'Nguyễn Tuấn Linh', title: 'Trưởng ca' },
           { id: 'HK0314', name: 'Nguyễn Thị Tú Uyên' },
           { id: 'HK0286', name: 'Lê Anh Quân' },
         ] },
-      { id: 'TO2', name: 'Tổ 2', rotateBy: 'week', cycle: ['CA_S', 'CA_C'], cycleOffset: 1,
+      { id: 'TO2', name: 'Tổ 1', rotateBy: 'week', cycle: ['CA_S', 'CA_C'], cycleOffset: 1,
         people: [
           { id: 'HK0017', name: 'Phạm Thị Thu Phương', title: 'Trưởng ca' },
           { id: 'HK0462', name: 'Phạm Hữu Hiếu' },
@@ -158,4 +158,28 @@ const OFFICES = [
 
 function getOffice(id) {
   return OFFICES.find(o => o.id === id);
+}
+
+// Ghi đè office.teams[].people TĨNH bằng danh sách đã lưu qua UI "Danh sách nhân viên" (Firestore/
+// localStorage, xem StorageAPI.loadRoster/subscribeRoster) — GHI TRỰC TIẾP vào object office đang
+// dùng chung toàn app (getOffice() luôn trả về CÙNG 1 object), để mọi nơi đọc office.teams (xếp
+// lịch, xuất Excel, trang tổng hợp...) tự thấy danh sách mới nhất mà không cần sửa lại từng chỗ.
+// rosterDoc null/không có team nào khớp -> giữ nguyên people tĩnh gốc trong offices-data.js.
+function applyRosterOverride(office, rosterDoc) {
+  if (!rosterDoc || !rosterDoc.teams) return office;
+  for (const team of office.teams) {
+    if (Array.isArray(rosterDoc.teams[team.id])) team.people = rosterDoc.teams[team.id];
+  }
+  return office;
+}
+
+// "Nguyễn Văn Đức" -> "NGUYENVANDUC" — id tạm cho nhân viên CHƯA CÓ mã NV chính thức khi thêm qua UI
+// (giống các trường hợp có sẵn MANHCHUAN/HOANGTHANHHAI) — bỏ dấu, chỉ giữ chữ+số, thêm số phía sau
+// nếu trùng id đã có trong `existingIds`.
+function slugifyPersonId(name, existingIds) {
+  const base = name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd')
+    .toUpperCase().replace(/[^A-Z0-9]/g, '') || 'NV';
+  let id = base, n = 2;
+  while (existingIds.has(id)) { id = base + n; n += 1; }
+  return id;
 }

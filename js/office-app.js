@@ -27,6 +27,9 @@ const els = {
   staffListOverlay: document.getElementById('staffListOverlay'),
   staffListCloseBtn: document.getElementById('staffListCloseBtn'),
   staffListBody: document.getElementById('staffListBody'),
+  staffAddRowBtn: document.getElementById('staffAddRowBtn'),
+  staffListSaveBtn: document.getElementById('staffListSaveBtn'),
+  staffListStatus: document.getElementById('staffListStatus'),
 };
 
 let state = {
@@ -35,6 +38,7 @@ let state = {
   schedule: {}, // personId -> {name, title, teamId, days:[7]}
   dirty: false,
   unsub: null,
+  rosterUnsub: null,
   viewMode: 'day', // 'day' | 'week' — mặc định "Theo ngày" để tiện xếp/sửa hằng ngày
   dayIdx: 0,
 };
@@ -62,19 +66,94 @@ function renderWeekLabel() {
   els.weekPicker.value = isoDate(state.monday);
 }
 
-// Danh sách nhân viên — CHỈ XEM, đọc trực tiếp từ office.teams (offices-data.js), không phải form
-// thêm nhân viên qua giao diện; thêm nhân viên mới vẫn sửa trực tiếp offices-data.js rồi push code.
+// Danh sách nhân viên — SỬA được trực tiếp trong bảng, lưu qua StorageAPI.saveRoster() (Firestore),
+// ghi đè office.teams[].people cho MỌI người đang mở app (xem applyRosterOverride trong
+// offices-data.js) — áp dụng ngay cho xếp lịch, chấm công, xuất Excel, kể cả tuần đã lưu trước đó
+// (normalizeSchedule tự bổ sung "Nghỉ" cho ai mới thêm mà tuần đó chưa có).
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Mã NV THẬT luôn có chữ số (HK0009/TV01/RX01/SAPA015...) — id không có chữ số là mã TẠM tự sinh từ
+// tên (MANHCHUAN/HOANGTHANHHAI...), hiện input Mã NV trống để không gây nhầm là mã chính thức.
+function isRealStaffId(id) { return /\d/.test(id); }
+
+function writeStaffRowsToDom(rows) {
+  els.staffListBody.innerHTML = rows.map((r, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td><input type="text" class="staff-id-input" value="${escapeHtml(r.id)}" placeholder="(chưa có)"></td>
+      <td><input type="text" class="staff-name-input" value="${escapeHtml(r.name)}" placeholder="Họ tên"></td>
+      <td><select class="staff-team-select">${state.office.teams.map(t =>
+        `<option value="${t.id}"${t.id === r.teamId ? ' selected' : ''}>${escapeHtml(t.name || t.id)}</option>`).join('')}</select></td>
+      <td><input type="text" class="staff-title-input" value="${escapeHtml(r.title)}" placeholder="(mặc định)"></td>
+      <td><button type="button" class="staff-row-remove" aria-label="Xoá nhân viên">×</button></td>
+    </tr>
+  `).join('');
+  els.staffListBody.querySelectorAll('.staff-row-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rows2 = readStaffRowsFromDom();
+      rows2.splice([...els.staffListBody.children].indexOf(btn.closest('tr')), 1);
+      writeStaffRowsToDom(rows2);
+    });
+  });
+}
+
+function readStaffRowsFromDom() {
+  return [...els.staffListBody.querySelectorAll('tr')].map(tr => ({
+    id: tr.querySelector('.staff-id-input').value.trim(),
+    name: tr.querySelector('.staff-name-input').value.trim(),
+    teamId: tr.querySelector('.staff-team-select').value,
+    title: tr.querySelector('.staff-title-input').value.trim(),
+  }));
+}
+
 function renderStaffList() {
-  let stt = 0;
   const rows = [];
   for (const team of state.office.teams) {
     for (const p of team.people) {
-      stt += 1;
-      rows.push(`<tr><td>${stt}</td><td>${p.id.startsWith('HK') ? p.id : ''}</td><td>${p.name}</td>`
-        + `<td>${team.name || team.id}</td><td>${p.title || ''}</td></tr>`);
+      rows.push({ id: isRealStaffId(p.id) ? p.id : '', name: p.name, teamId: team.id, title: p.title || '' });
     }
   }
-  els.staffListBody.innerHTML = rows.join('');
+  writeStaffRowsToDom(rows);
+  els.staffListStatus.textContent = '';
+}
+
+async function saveStaffList() {
+  const rows = readStaffRowsFromDom();
+  const named = rows.filter(r => r.name);
+  if (named.length !== rows.length) { alert('Mỗi dòng cần có Họ tên (hoặc bấm × để xoá dòng trống).'); return; }
+
+  const existingIds = new Set();
+  const teamsPeople = {}; // { teamId: [{id,name,title}, ...] }
+  for (const team of state.office.teams) teamsPeople[team.id] = [];
+  for (const r of named) {
+    let id = r.id || null;
+    if (id) existingIds.add(id);
+  }
+  for (const r of named) {
+    const id = r.id || slugifyPersonId(r.name, existingIds);
+    existingIds.add(id);
+    const person = { id, name: r.name };
+    if (r.title) person.title = r.title;
+    (teamsPeople[r.teamId] || (teamsPeople[r.teamId] = [])).push(person);
+  }
+
+  els.staffListSaveBtn.disabled = true;
+  const origLabel = els.staffListSaveBtn.textContent;
+  els.staffListSaveBtn.textContent = 'Đang lưu…';
+  try {
+    await StorageAPI.saveRoster(state.office.id, teamsPeople);
+    els.staffListStatus.textContent = `Đã lưu lúc ${new Date().toLocaleString('vi-VN')}`;
+    els.staffListStatus.className = 'status-text';
+  } catch (err) {
+    console.error(err);
+    els.staffListStatus.textContent = 'Lưu thất bại: ' + err.message;
+    els.staffListStatus.className = 'status-text dirty';
+  } finally {
+    els.staffListSaveBtn.disabled = false;
+    els.staffListSaveBtn.textContent = origLabel;
+  }
 }
 
 function openStaffList() {
@@ -214,16 +293,6 @@ function clampExportDayBounds() {
   if (Number(els.exportToDay.value) > n || !els.exportToDay.value) els.exportToDay.value = n;
 }
 
-// Lịch lưu từ trước khi có tính năng kéo-giãn giờ có thể chưa có field `ranges` — bổ sung cho đủ 7 ô
-// null để buildDaySegments/effectiveRanges không bị lỗi thiếu dữ liệu.
-function normalizeSchedule(schedule) {
-  Object.values(schedule).forEach(p => {
-    if (!Array.isArray(p.ranges)) p.ranges = new Array(7).fill(null);
-    if (!Array.isArray(p.notes)) p.notes = new Array(7).fill('');
-  });
-  return schedule;
-}
-
 // Ghi chú chia việc theo từng người/ngày — chỉ hiện ở tab "Theo ngày" cho văn phòng nào bật
 // notesEditable (hiện chỉ Tổng Đài 96 Võ Chí Công, xem renderView()). KHÔNG renderView() lại ở đây
 // (khác các onXxx khác) để không mất focus/con trỏ đang gõ dở trong ô input mỗi lần gõ phím.
@@ -250,7 +319,7 @@ function applyWeekSnapshot(saved) {
     return;
   }
   if (saved && saved.assignments) {
-    state.schedule = normalizeSchedule(saved.assignments);
+    state.schedule = normalizeSchedule(saved.assignments, state.office);
     els.statusText.textContent = `Đã lưu lúc ${new Date(saved.updatedAt).toLocaleString('vi-VN')}${saved.updatedBy ? ' bởi ' + saved.updatedBy : ''}`;
     els.statusText.className = 'status-text';
   } else if (state.office.manualOnly) {
@@ -340,6 +409,13 @@ function init() {
   els.staffListCloseBtn.addEventListener('click', closeStaffList);
   els.staffListOverlay.addEventListener('click', (ev) => { if (ev.target === els.staffListOverlay) closeStaffList(); });
   document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !els.staffListOverlay.hidden) closeStaffList(); });
+  els.staffAddRowBtn.addEventListener('click', () => {
+    const rows = readStaffRowsFromDom();
+    rows.push({ id: '', name: '', teamId: state.office.teams[0].id, title: '' });
+    writeStaffRowsToDom(rows);
+    els.staffListBody.querySelector('tr:last-child .staff-name-input').focus();
+  });
+  els.staffListSaveBtn.addEventListener('click', saveStaffList);
 
   els.tabDayBtn.addEventListener('click', () => switchViewMode('day'));
   els.tabWeekBtn.addEventListener('click', () => switchViewMode('week'));
@@ -412,7 +488,22 @@ function init() {
     if (state.dirty) { e.preventDefault(); e.returnValue = ''; }
   });
 
-  loadWeek();
+  // Theo dõi TRỰC TIẾP danh sách nhân viên (roster) — ghi đè office.teams[].people ngay khi ai đó
+  // lưu qua modal "Danh sách nhân viên" (tab khác hoặc máy khác), không cần tải lại trang. Lần đầu
+  // (rosterLoadedOnce=false) CHỜ có roster (nếu có) rồi mới loadWeek() lần đầu, để không thiếu người
+  // mới thêm ngay khi vào trang; các lần sau chỉ cập nhật view hiện tại, không tải lại tuần từ đầu.
+  let rosterLoadedOnce = false;
+  state.rosterUnsub = StorageAPI.subscribeRoster(state.office.id, (rosterDoc) => {
+    applyRosterOverride(state.office, rosterDoc);
+    if (!rosterLoadedOnce) {
+      rosterLoadedOnce = true;
+      loadWeek();
+    } else {
+      if (!els.staffListOverlay.hidden) renderStaffList();
+      normalizeSchedule(state.schedule, state.office);
+      renderView();
+    }
+  });
 }
 
 init();
