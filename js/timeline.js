@@ -56,6 +56,40 @@ function effectiveRanges(office, code, customRanges) {
   return parseHoursSegments(shiftDefFor(office, code).hours);
 }
 
+// Gom người theo CA (không theo "đội" cố định trong offices-data.js — đội chỉ dùng để TÍNH lịch xoay
+// vòng, không dùng để hiển thị nhóm nữa) — khi ca đảo/xoay, người tự chuyển sang đúng khối ca mới,
+// theo yêu cầu người dùng. `getCode(person)` trả về mã ca đại diện để xếp nhóm: đúng mã của ngày đang
+// xem (tab "Theo ngày") hoặc mã đại diện cho cả tuần (weekPrimaryCode, tab "Theo tuần"). Thứ tự nhóm
+// theo đúng thứ tự office.shiftDefs, "Nghỉ" luôn ở cuối.
+function groupPeopleByShift(office, schedule, getCode) {
+  const order = [...office.shiftDefs.map(d => d.code), REST_CODE];
+  const buckets = new Map(order.map(code => [code, []]));
+  for (const team of office.teams) {
+    for (const p of team.people) {
+      const person = schedule[p.id];
+      if (!person) continue;
+      const code = getCode(person) || REST_CODE;
+      if (!buckets.has(code)) buckets.set(code, []); // an toàn nếu gặp mã lạ không có trong shiftDefs
+      buckets.get(code).push({ p, person });
+    }
+  }
+  return [...buckets.keys()]
+    .filter(code => buckets.get(code).length)
+    .map(code => ({ code, def: shiftDefFor(office, code), members: buckets.get(code) }));
+}
+
+// Mã ca đại diện của 1 người cho CẢ TUẦN — mã làm việc xuất hiện NHIỀU NHẤT trong 7 ngày (bỏ qua
+// ngày nghỉ riêng lẻ), vì với team rotateBy:'week' cả đội cùng 1 mã suốt tuần (trừ ngày nghỉ cá nhân)
+// nên mã đa số cũng chính là mã cả tuần đó; với team xoay theo ngày thì đây là ước lượng hợp lý nhất
+// (ca họ làm nhiều nhất tuần này). Nghỉ cả tuần (hiếm) -> nhóm "Nghỉ".
+function weekPrimaryCode(person) {
+  const counts = new Map();
+  person.days.forEach(c => { if (c !== REST_CODE) counts.set(c, (counts.get(c) || 0) + 1); });
+  let best = null, bestN = 0;
+  for (const [code, n] of counts) { if (n > bestN) { best = code; bestN = n; } }
+  return best || REST_CODE;
+}
+
 // Với 1 người (days + ranges tuỳ chỉnh), tính ra danh sách đoạn cần vẽ cho MỖI ngày (kể cả đoạn vắt
 // từ hôm trước). Mỗi đoạn có segIdx = vị trí của nó trong effectiveRanges(...) của đúng ngày đó, để
 // biết cần sửa/xoá đúng phần tử nào khi kéo-giãn hoặc bấm xoá.
@@ -173,19 +207,17 @@ function renderTimeline(root, office, schedule, dates, opts) {
   });
   scrollInner.appendChild(ruler);
 
-  for (const team of office.teams) {
+  const shiftGroups = groupPeopleByShift(office, schedule, weekPrimaryCode);
+  for (const group of shiftGroups) {
     const label = document.createElement('div');
     label.className = 'team-row-label';
-    label.textContent = team.name || team.id;
+    label.textContent = group.def.name + (group.def.hours ? ' · ' + group.def.hours : '');
     namesPane.appendChild(label);
     const labelSpacer = document.createElement('div');
     labelSpacer.className = 'team-row-label-spacer';
     scrollInner.appendChild(labelSpacer);
 
-    for (const p of team.people) {
-      const person = schedule[p.id];
-      if (!person) continue;
-
+    for (const { p, person } of group.members) {
       const nameCell = document.createElement('div');
       nameCell.className = 'tl-person-row tl-name-cell';
       nameCell.innerHTML = `<div class="tl-name">${person.name}</div>${person.title ? `<div class="title-sub">${person.title}</div>` : ''}`;
@@ -400,19 +432,17 @@ function renderDayTimeline(root, office, schedule, dayIdx, dateObj, opts) {
   let dayCanvasEl = null;
   const refreshChart = () => { if (dayCanvasEl) drawDayHeadcountChart(dayCanvasEl, office, schedule, dayIdx); };
 
-  for (const team of office.teams) {
+  const shiftGroups = groupPeopleByShift(office, schedule, (person) => person.days[dayIdx]);
+  for (const group of shiftGroups) {
     const label = document.createElement('div');
     label.className = 'team-row-label';
-    label.textContent = team.name || team.id;
+    label.textContent = group.def.name + (group.def.hours ? ' · ' + group.def.hours : '');
     namesPane.appendChild(label);
     const labelSpacer = document.createElement('div');
     labelSpacer.className = 'team-row-label-spacer';
     scrollInner.appendChild(labelSpacer);
 
-    for (const p of team.people) {
-      const person = schedule[p.id];
-      if (!person) continue;
-
+    for (const { p, person } of group.members) {
       const nameCell = document.createElement('div');
       nameCell.className = 'tl-person-row tl-name-cell';
       nameCell.innerHTML = `<div class="tl-name">${person.name}</div>${person.title ? `<div class="title-sub">${person.title}</div>` : ''}`;
@@ -440,6 +470,21 @@ function renderDayTimeline(root, office, schedule, dayIdx, dateObj, opts) {
           openTimelineMenu(root, addBtn, office, (newCode) => opts.onAddSegment(p.id, dayIdx, newCode));
         });
         rowInner.appendChild(addBtn);
+      }
+
+      // Ô ghi chú chia việc cho đúng người/ngày này — chỉ hiện khi opts.notesEditable bật (xem
+      // office-app.js renderView()). Cập nhật state ngay khi gõ (KHÔNG vẽ lại UI) để không mất
+      // focus/con trỏ đang gõ dở giữa chừng.
+      if (opts.notesEditable) {
+        const noteInput = document.createElement('input');
+        noteInput.type = 'text';
+        noteInput.className = 'tl-note-input';
+        noteInput.placeholder = 'Ghi chú chia việc…';
+        noteInput.value = (opts.getNote && opts.getNote(p.id, dayIdx)) || '';
+        noteInput.setAttribute('aria-label', 'Ghi chú chia việc cho ' + person.name);
+        noteInput.addEventListener('click', ev => ev.stopPropagation());
+        noteInput.addEventListener('input', () => opts.onNoteChange && opts.onNoteChange(p.id, dayIdx, noteInput.value));
+        rowInner.appendChild(noteInput);
       }
 
       scrollInner.appendChild(rowInner);

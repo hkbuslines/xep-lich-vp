@@ -102,7 +102,7 @@ function suggestWeekSchedule(office, mondayDate) {
         }
         days.push(code);
       }
-      result[person.id] = { name: person.name, title: person.title || '', teamId: team.id, days, ranges: new Array(7).fill(null) };
+      result[person.id] = { name: person.name, title: person.title || '', teamId: team.id, days, ranges: new Array(7).fill(null), notes: new Array(7).fill('') };
     });
   }
   return result;

@@ -90,6 +90,9 @@ function renderView() {
       onRemoveSegment,
       onResizeLive,
       onResizeEnd: () => renderView(),
+      notesEditable: state.office.id === 'tongdai', // chia việc theo ca — chỉ Tổng Đài 96 Võ Chí Công
+      getNote: (personId, dIdx) => (state.schedule[personId].notes || [])[dIdx] || '',
+      onNoteChange,
     });
   } else {
     els.hintText.textContent = 'Bấm vào 1 thanh ca để chọn ca khác (kể cả đổi thành "Nghỉ"). Hoặc kéo-thả 1 thanh ca thả vào ô của người/ngày khác để đổi chỗ 2 ca cho nhau. Thanh mờ ở đầu ngày là phần ca đêm hôm trước vắt sang — muốn đổi thì bấm vào đúng ngày ca đó bắt đầu.';
@@ -173,8 +176,17 @@ function markDirty() {
 function normalizeSchedule(schedule) {
   Object.values(schedule).forEach(p => {
     if (!Array.isArray(p.ranges)) p.ranges = new Array(7).fill(null);
+    if (!Array.isArray(p.notes)) p.notes = new Array(7).fill('');
   });
   return schedule;
+}
+
+// Ghi chú chia việc theo từng người/ngày — chỉ hiện ở tab "Theo ngày" cho văn phòng nào bật
+// notesEditable (hiện chỉ Tổng Đài 96 Võ Chí Công, xem renderView()). KHÔNG renderView() lại ở đây
+// (khác các onXxx khác) để không mất focus/con trỏ đang gõ dở trong ô input mỗi lần gõ phím.
+function onNoteChange(personId, dayIdx, value) {
+  state.schedule[personId].notes[dayIdx] = value;
+  if (!state.dirty) markDirty();
 }
 
 async function loadWeek() {

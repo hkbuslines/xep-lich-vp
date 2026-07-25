@@ -146,6 +146,11 @@ main { max-width: 1400px; margin: 0 auto; padding: 16px 20px 60px; }
 .tl-day-row-inner { gap: 8px; }
 .tl-day-row-inner .tl-track { height: 100%; }
 .tl-add-btn { width: 24px; height: 24px; font-size: 14px; }
+.tl-note-input {
+  flex-shrink: 0; width: 180px; height: 28px; font-size: 12px; padding: 0 8px;
+  border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--fg);
+}
+.tl-note-input:focus { outline: none; border-color: var(--accent); }
 
 .tl-bar-handle { position: absolute; top: 0; bottom: 0; width: 9px; cursor: ew-resize; z-index: 1; }
 .tl-bar-handle-l { left: -3px; }
