@@ -16,8 +16,9 @@ const els = {
   regenBtn: document.getElementById('regenBtn'),
   saveBtn: document.getElementById('saveBtn'),
   exportBtn: document.getElementById('exportBtn'),
-  exportFromDate: document.getElementById('exportFromDate'),
-  exportToDate: document.getElementById('exportToDate'),
+  exportMonth: document.getElementById('exportMonth'),
+  exportFromDay: document.getElementById('exportFromDay'),
+  exportToDay: document.getElementById('exportToDay'),
   exportMonthBtn: document.getElementById('exportMonthBtn'),
   statusText: document.getElementById('statusText'),
   timeline: document.getElementById('timeline'),
@@ -171,6 +172,20 @@ function markDirty() {
   els.statusText.className = 'status-text dirty';
 }
 
+// Số ngày của "YYYY-MM" (giá trị input type=month) — dùng để giới hạn 2 ô "Từ ngày"/"Đến ngày" luôn
+// nằm trong đúng tháng đã chọn (vd không cho chọn ngày 30 khi đang ở tháng 2).
+function daysInMonthOf(monthStr) {
+  const [y, m] = monthStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+function clampExportDayBounds() {
+  const n = daysInMonthOf(els.exportMonth.value);
+  els.exportFromDay.max = n; els.exportToDay.max = n;
+  if (Number(els.exportFromDay.value) > n || !els.exportFromDay.value) els.exportFromDay.value = n;
+  if (Number(els.exportToDay.value) > n || !els.exportToDay.value) els.exportToDay.value = n;
+}
+
 // Lịch lưu từ trước khi có tính năng kéo-giãn giờ có thể chưa có field `ranges` — bổ sung cho đủ 7 ô
 // null để buildDaySegments/effectiveRanges không bị lỗi thiếu dữ liệu.
 function normalizeSchedule(schedule) {
@@ -308,16 +323,24 @@ function init() {
     }
   });
 
-  // Mặc định: cả tháng chứa tuần đang xem — người dùng chỉnh lại 2 ô ngày nếu muốn xuất 1 khoảng
-  // ngày bất kỳ (không nhất thiết trọn tháng, không nhất thiết bắt đầu từ ngày 1).
-  const defaultMonthStart = new Date(Date.UTC(state.monday.getUTCFullYear(), state.monday.getUTCMonth(), 1));
-  const defaultMonthEnd = new Date(Date.UTC(state.monday.getUTCFullYear(), state.monday.getUTCMonth() + 1, 0));
-  els.exportFromDate.value = isoDate(defaultMonthStart);
-  els.exportToDate.value = isoDate(defaultMonthEnd);
+  // Chọn THÁNG trước (quyết định "THÁNG MM/YYYY" trên tiêu đề file xuất), rồi chọn ngày bắt đầu/kết
+  // thúc TRONG đúng tháng đó — mặc định cả tháng chứa tuần đang xem (ngày 1 -> ngày cuối tháng),
+  // người dùng thu hẹp lại 2 ô ngày nếu chỉ cần xuất 1 phần của tháng.
+  els.exportMonth.value = isoDate(state.monday).slice(0, 7);
+  els.exportFromDay.value = 1;
+  els.exportToDay.value = daysInMonthOf(els.exportMonth.value);
+  els.exportMonth.addEventListener('change', () => {
+    if (!els.exportMonth.value) return;
+    clampExportDayBounds();
+  });
   els.exportMonthBtn.addEventListener('click', async () => {
-    if (!els.exportFromDate.value || !els.exportToDate.value) { alert('Chọn từ ngày và đến ngày cần xuất trước đã.'); return; }
-    const fromDate = parseISODate(els.exportFromDate.value);
-    const toDate = parseISODate(els.exportToDate.value);
+    if (!els.exportMonth.value || !els.exportFromDay.value || !els.exportToDay.value) {
+      alert('Chọn tháng và ngày cần xuất trước đã.'); return;
+    }
+    clampExportDayBounds();
+    const [y, m] = els.exportMonth.value.split('-').map(Number);
+    const fromDate = new Date(Date.UTC(y, m - 1, Number(els.exportFromDay.value)));
+    const toDate = new Date(Date.UTC(y, m - 1, Number(els.exportToDay.value)));
     if (fromDate > toDate) { alert('"Từ ngày" phải trước hoặc trùng "Đến ngày".'); return; }
     els.exportMonthBtn.disabled = true;
     els.exportMonthBtn.textContent = 'Đang gộp lịch…';

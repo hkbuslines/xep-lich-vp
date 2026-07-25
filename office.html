@@ -38,11 +38,14 @@
   </section>
 
   <section class="toolbar">
+    <label class="who-label">Tháng:
+      <input id="exportMonth" type="month">
+    </label>
     <label class="who-label">Từ ngày:
-      <input id="exportFromDate" type="date">
+      <input id="exportFromDay" type="number" min="1" max="31" class="day-num-input">
     </label>
     <label class="who-label">Đến ngày:
-      <input id="exportToDate" type="date">
+      <input id="exportToDay" type="number" min="1" max="31" class="day-num-input">
     </label>
     <button id="exportMonthBtn" class="btn ghost">📊 Xuất Lịch + Chấm công</button>
   </section>

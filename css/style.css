@@ -32,10 +32,11 @@ main { max-width: 1400px; margin: 0 auto; padding: 16px 20px 60px; }
 }
 .brand { color: var(--fg); text-decoration: none; font-weight: 600; }
 .brand:hover { color: var(--accent); }
-.office-picker select, select, input[type=date], input[type=text] {
+.office-picker select, select, input[type=date], input[type=text], input[type=month], input[type=number] {
   font-size: 14px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--card); color: var(--fg);
 }
+.day-num-input { width: 56px; }
 .sync-badge { margin-left: auto; font-size: 13px; color: var(--muted); padding: 4px 10px; border: 1px solid var(--border); border-radius: 999px; }
 
 .view-tabs { display: flex; gap: 8px; margin-top: 16px; }

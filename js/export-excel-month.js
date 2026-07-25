@@ -21,13 +21,25 @@ function rangeDates(fromDate, toDate) {
 
 function fmtDDMM(d) { return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`; }
 
-// Nhãn hiển thị cho cả khoảng ngày đang xuất — dùng thay cho "THÁNG MM/YYYY" cũ ở mọi tiêu đề/sheet,
-// vì giờ khoảng ngày có thể lệch tháng, không tròn tháng, không bắt đầu từ ngày 1.
+// Nhãn hiển thị cho cả khoảng ngày đang xuất — office.html cho chọn THÁNG trước rồi mới chọn ngày
+// trong đúng tháng đó, nên luôn giữ được đúng "THÁNG MM/YYYY" quen thuộc trên tiêu đề file xuất; nếu
+// người dùng chỉ xuất 1 phần của tháng (không phải ngày 1 -> ngày cuối) thì ghi thêm khoảng ngày cụ
+// thể bên cạnh. Trường hợp khác tháng (hiện không thể chọn được từ UI, chỉ để phòng hờ khi gọi hàm
+// trực tiếp) vẫn hiển thị hợp lý bằng dd/mm cho cả 2 đầu.
 function periodLabel(dates) {
   const first = dates[0], last = dates[dates.length - 1];
-  return first.getUTCFullYear() === last.getUTCFullYear()
-    ? `${fmtDDMM(first)} – ${fmtDDMM(last)}/${last.getUTCFullYear()}`
-    : `${fmtDDMM(first)}/${first.getUTCFullYear()} – ${fmtDDMM(last)}/${last.getUTCFullYear()}`;
+  const sameMonth = first.getUTCFullYear() === last.getUTCFullYear() && first.getUTCMonth() === last.getUTCMonth();
+  if (!sameMonth) {
+    return first.getUTCFullYear() === last.getUTCFullYear()
+      ? `${fmtDDMM(first)} – ${fmtDDMM(last)}/${last.getUTCFullYear()}`
+      : `${fmtDDMM(first)}/${first.getUTCFullYear()} – ${fmtDDMM(last)}/${last.getUTCFullYear()}`;
+  }
+  const mm = String(first.getUTCMonth() + 1).padStart(2, '0'), yyyy = first.getUTCFullYear();
+  const daysInThisMonth = new Date(Date.UTC(yyyy, first.getUTCMonth() + 1, 0)).getUTCDate();
+  const isFullMonth = first.getUTCDate() === 1 && last.getUTCDate() === daysInThisMonth;
+  return isFullMonth
+    ? `THÁNG ${mm}/${yyyy}`
+    : `THÁNG ${mm}/${yyyy} (${String(first.getUTCDate()).padStart(2, '0')}–${String(last.getUTCDate()).padStart(2, '0')})`;
 }
 
 function monthPersonList(office) {
@@ -143,10 +155,21 @@ async function exportRangeExcel(office, fromDate, toDate) {
   const blob = new Blob([buf], { type: 'application/octet-stream' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${office.id}_${isoDate(fromDate)}_${isoDate(toDate)}.xlsx`;
+  a.download = `${office.id}_${fileNameSuffix(fromDate, toDate)}.xlsx`;
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+// Trọn tháng -> đúng tên file quen thuộc "..._thang_MM_YYYY.xlsx" như trước; xuất 1 phần tháng thì
+// ghi rõ khoảng ngày trong tên file để phân biệt.
+function fileNameSuffix(fromDate, toDate) {
+  const daysInThisMonth = new Date(Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth() + 1, 0)).getUTCDate();
+  const isFullMonth = fromDate.getUTCDate() === 1 && toDate.getUTCDate() === daysInThisMonth
+    && fromDate.getUTCFullYear() === toDate.getUTCFullYear() && fromDate.getUTCMonth() === toDate.getUTCMonth();
+  return isFullMonth
+    ? `thang_${String(fromDate.getUTCMonth() + 1).padStart(2, '0')}_${fromDate.getUTCFullYear()}`
+    : `${isoDate(fromDate)}_${isoDate(toDate)}`;
 }
 
 // Sheet "Lich thang" — 1 dòng/người, mỗi ô ngày là TEXT "HH:MM-HH:MM" (hoặc "NGHỈ") — nguồn dữ liệu
