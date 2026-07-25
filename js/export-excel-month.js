@@ -123,7 +123,7 @@ function buildLichThangSheet(wb, office, monthData, people, dates, year, month) 
 
   ws.mergeCells(1, 1, 1, lastCol);
   ws.getCell(1, 1).value = `LỊCH LÀM VIỆC — ${office.name.toUpperCase()} — THÁNG ${String(month).padStart(2, '0')}/${year}`;
-  ws.getCell(1, 1).font = { ...TNR9BW, size: 12 };
+  ws.getCell(1, 1).font = TNR9BW;
   ws.getCell(1, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CC_NAVY } };
   ws.getCell(1, 1).alignment = CENW;
 
@@ -193,7 +193,7 @@ function buildChamCongMonthSheet(wb, office, monthData, people, dates, year, mon
 
   ws.mergeCells(1, 1, 1, lastCol);
   ws.getCell(1, 1).value = `BẢNG CHẤM CÔNG — ${office.name.toUpperCase()} — THÁNG ${String(month).padStart(2, '0')}/${year}`;
-  ws.getCell(1, 1).font = { ...TNR9BW, size: 12 };
+  ws.getCell(1, 1).font = TNR9BW;
   ws.getCell(1, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CC_NAVY } };
   ws.getCell(1, 1).alignment = CENW;
 
@@ -259,7 +259,7 @@ function buildChamCongMonthSheet(wb, office, monthData, people, dates, year, mon
         : { formula: `IFERROR(ROUND(MAX(${hoursFormula(ltRef)}-${standardHours},0)*0.1,2),0)` };
       cm.font = TNR9; cm.alignment = CENW; cm.border = BORD;
       cm.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CC_INPUTY } };
-      cs.font = TNR9; cs.alignment = CENW; cs.border = BORD;
+      cs.font = TNR9B; cs.alignment = CENW; cs.border = BORD; // dòng "công làm thêm" in đậm, giống file thật
       cs.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CC_GRAY } };
     });
 
