@@ -10,7 +10,7 @@ const REST_DEF = { code: REST_CODE, name: 'Nghỉ', hours: '', color: '#e03131' 
 const OFFICES = [
   {
     id: 'tongdai',
-    name: 'Tổng Đài VP',
+    name: 'Tổng Đài 96 Võ Chí Công',
     standardHoursPerDay: 9, // đủ 9h/ngày = 1 công chính, vượt = 0.1 công/giờ tăng ca (sheet Cham cong)
     shiftDefs: [
       { code: 'CA1', name: 'Ca 1 (Sáng)', hours: '06:00-15:00', color: '#4C6EF5' },
@@ -125,6 +125,12 @@ const OFFICES = [
       { code: 'NS', name: 'Nửa ca Sáng (NS)', hours: '05:00-14:00', color: '#2F9E44' },
       { code: 'NC', name: 'Nửa ca Chiều (NC)', hours: '14:00-24:00', color: '#F08C00' },
     ],
+    // Khớp đúng lich_lam_viec_config.json 'rates' — dùng chung cho sheet "Thong so" và bảng "Ký hiệu"
+    // trong Cham cong khi xuất Excel, tránh lặp số liệu 2 nơi.
+    rates: {
+      half: { base: 450000, an_ca: 40000, thuong: 0 },
+      full: { base: 650000, an_ca: 60000, thuong: 100000 },
+    },
     teams: [
       { id: 'LAIXE', name: 'Lái xe', rotateBy: 'day', noOvertime: true,
         cycle: ['F', 'F', 'F', 'F', 'F', 'NS', 'NC', REST_CODE],

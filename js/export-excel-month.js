@@ -81,6 +81,16 @@ function hoursFormula(ltRef) {
   return `IF(LEN(${ltRef})=11,${seg1},IF(LEN(${ltRef})=25,${seg1}+${seg2},0))`;
 }
 
+// Style riêng cho 3 sheet "Thong so / Lich lam viec / Bang luong" của TCSP (Lái Xe Trung Chuyển Sapa)
+// — PHỎNG THEO ĐÚNG export_hybrid_formula_excel() trong xep_lich_lam_viec.py (font mặc định, KHÔNG
+// phải Times New Roman như sheet Cham cong — file thật cũng phân biệt vậy).
+const TS_HDR_ARGB = 'FF1F4E78';
+const TS_TIT = { size: 14, bold: true, color: { argb: 'FF1F4E78' } };
+const TS_SUB = { italic: true, color: { argb: 'FF666666' } };
+const TS_HF = { bold: true, color: { argb: 'FFFFFFFF' } };
+const TS_REST_FILL = 'FFFFC7CE', TS_REST_FONT = 'FF9C0006';
+const TS_HALF_FILL = 'FFFFF2CC', TS_HALF_FONT = 'FF9C6500';
+
 const CC_NAVY = 'FF1F3864', CC_BLUE = 'FF2E75B6', CC_INPUTY = 'FFFFF2CC', CC_LEGENDY = 'FFFFF9E6', CC_GRAY = 'FFF2F2F2';
 const TNR9 = { name: 'Times New Roman', size: 9 };
 const TNR9B = { name: 'Times New Roman', size: 9, bold: true };
@@ -104,10 +114,13 @@ async function exportMonthExcel(office, year, month) {
   wb.creator = 'Xếp Lịch VP';
   wb.created = new Date();
 
-  const ltInfo = buildLichThangSheet(wb, office, monthData, people, dates, year, month);
   if (office.id === 'tcsp') {
-    buildChamCongTcSapaSheet(wb, office, monthData, people, dates, year, month, ltInfo);
+    // TCSP xuất đúng 4 sheet (Thong so / Lich lam viec / Bang luong / Cham cong) — y hệt cấu trúc
+    // export_hybrid_formula_excel() trong xep_lich_lam_viec.py, KHÁC hẳn 3 văn phòng kia (2 sheet
+    // Lich thang + Cham cong). Theo yêu cầu người dùng: chỉ TCSP cần đổi, các văn phòng khác giữ nguyên.
+    buildTcspExcel(wb, office, monthData, people, dates, year, month);
   } else {
+    const ltInfo = buildLichThangSheet(wb, office, monthData, people, dates, year, month);
     buildChamCongMonthSheet(wb, office, monthData, people, dates, year, month, ltInfo);
   }
 
@@ -305,19 +318,169 @@ function buildChamCongMonthSheet(wb, office, monthData, people, dates, year, mon
   ws.views = [{ state: 'frozen', xSplit: 5, ySplit: dataStartRow - 1 }];
 }
 
+// 4 sheet của TCSP (Thong so / Lich lam viec / Bang luong / Cham cong) — PHỎNG THEO ĐÚNG
+// export_hybrid_formula_excel() trong xep_lich_lam_viec.py, để file xuất từ web y hệt file mẫu
+// "lich_lam_viec_hybrid_thang_MM_YYYY.xlsx". Chỉ áp dụng cho TCSP, không đụng 3 văn phòng khác.
+function buildTcspExcel(wb, office, monthData, people, dates, year, month) {
+  const rateInfo = buildThongSoSheet(wb, office);
+  const ltInfo = buildLichLamViecSheet(wb, office, monthData, people, dates, year, month, rateInfo);
+  buildBangLuongSheet(wb, office, people, ltInfo, year, month);
+  buildChamCongTcSapaSheet(wb, office, monthData, people, dates, year, month, ltInfo);
+}
+
+// Sheet "Thong so" — bảng lương cơ bản/phụ cấp ăn ca/thưởng theo Ca nửa (NS/NC) vs Ca Full (C1),
+// lấy từ office.rates (khớp lich_lam_viec_config.json). Tổng thu nhập/ca là CÔNG THỨC (B7/C7) —
+// Lich lam viec tham chiếu ngược lại 2 ô này để tính lương từng người.
+function buildThongSoSheet(wb, office) {
+  const sheetName = 'Thong so';
+  const ws = wb.addWorksheet(sheetName);
+  ws.getCell(1, 1).value = `THÔNG SỐ LƯƠNG & PHỤ CẤP — ${office.name.toUpperCase()}`;
+  ws.getCell(1, 1).font = TS_TIT;
+
+  const half = office.rates.half, full = office.rates.full;
+  const rows = [
+    ['Hạng mục', 'Ca nửa (NS/NC)', 'Ca Full (C1)', 'Ghi chú'],
+    ['Lương cơ bản/ca (đ)', half.base, full.base, ''],
+    ['Phụ cấp ăn ca (đ)', half.an_ca, full.an_ca, ''],
+    ['Thưởng/ca (đ)', half.thuong, full.thuong, full.thuong ? 'Chỉ ca Full có thưởng' : ''],
+    ['Tổng thu nhập/ca (đ)', { formula: 'B4+B5+B6' }, { formula: 'C4+C5+C6' }, 'Lương + phụ cấp + thưởng (công thức)'],
+  ];
+  rows.forEach((r, i) => {
+    const row = 3 + i;
+    r.forEach((v, j) => {
+      const c = ws.getCell(row, j + 1);
+      c.value = v; c.border = BORD;
+      if (i === 0) { c.fill = fillOf(TS_HDR_ARGB); c.font = TS_HF; c.alignment = CENW; }
+    });
+  });
+  ws.getColumn(1).width = 28; ws.getColumn(2).width = 20; ws.getColumn(3).width = 16; ws.getColumn(4).width = 34;
+
+  return { sheetName, halfRef: `'${sheetName}'!$B$7`, fullRef: `'${sheetName}'!$C$7` };
+}
+
+// Sheet "Lich lam viec MM" — STT/Họ và tên/Chức danh + mỗi ngày là MÃ CA (F/NS/NC/N), đúng định dạng
+// "Lich lam viec" của file mẫu (khác "Lich thang" dùng cho 3 văn phòng kia, vốn ghi giờ dạng text).
+// Cột tổng hợp cuối (Số ca Full/Số ca nửa/Ngày nghỉ/Tổng thu nhập) đều là CÔNG THỨC.
+function buildLichLamViecSheet(wb, office, monthData, people, dates, year, month, rateInfo) {
+  const mm = String(month).padStart(2, '0');
+  const sheetName = `Lich lam viec ${mm}`;
+  const ws = wb.addWorksheet(sheetName);
+  const dayCol0 = 4; // D
+  const fullCol = dayCol0 + dates.length;
+  const halfCol = fullCol + 1, restCol = fullCol + 2, incomeCol = fullCol + 3;
+  const dayColLetter0 = colToLetter(dayCol0), dayColLetter1 = colToLetter(dayCol0 + dates.length - 1);
+
+  ws.getCell(1, 1).value = `LỊCH LÀM VIỆC ${office.name.toUpperCase()} — THÁNG ${mm}/${year} (PA HYBRID)`;
+  ws.getCell(1, 1).font = TS_TIT;
+  ws.getCell(2, 1).value = `Mỗi ngày: ${office.numVehicles - 1} Full (C1) + 1 cặp nửa (NS/NC) + 1 nghỉ (N). `
+    + `Sửa 1 ô ca ở đây thì Bảng lương và Chấm công tự cập nhật theo.`;
+  ws.getCell(2, 1).font = TS_SUB;
+
+  const r0 = 4;
+  [[1, 'STT'], [2, 'Họ và tên'], [3, 'Chức danh']].forEach(([col, label]) => {
+    const c = ws.getCell(r0, col);
+    c.value = label; c.fill = fillOf(TS_HDR_ARGB); c.font = TS_HF; c.alignment = CENW; c.border = BORD;
+  });
+  dates.forEach((d, i) => {
+    const c = ws.getCell(r0, dayCol0 + i);
+    c.value = `${TL_WEEKDAY[(d.getUTCDay() + 6) % 7]}\n${String(d.getUTCDate()).padStart(2, '0')}/${mm}`;
+    c.fill = fillOf(TS_HDR_ARGB); c.font = TS_HF; c.alignment = CENW; c.border = BORD;
+  });
+  ['Số ca Full', 'Số ca nửa', 'Ngày nghỉ', 'Tổng thu nhập (đ)'].forEach((label, k) => {
+    const c = ws.getCell(r0, fullCol + k);
+    c.value = label; c.fill = fillOf(TS_HDR_ARGB); c.font = TS_HF; c.alignment = CENW; c.border = BORD;
+  });
+
+  people.forEach((p, idx) => {
+    const row = r0 + 1 + idx;
+    ws.getCell(row, 1).value = idx + 1;
+    ws.getCell(row, 2).value = p.name;
+    ws.getCell(row, 3).value = p.title || 'Lái xe TC Sapa';
+    [1, 2, 3].forEach(col => { ws.getCell(row, col).border = BORD; ws.getCell(row, col).alignment = col === 2 ? LEFTW : CENW; });
+
+    const person = monthData[p.id];
+    dates.forEach((d, i) => {
+      const code = person.days[i];
+      const cell = ws.getCell(row, dayCol0 + i);
+      cell.value = code === REST_CODE ? 'N' : code;
+      cell.alignment = CENW; cell.border = BORD;
+      if (code === REST_CODE) { cell.fill = fillOf(TS_REST_FILL); cell.font = { bold: true, color: { argb: TS_REST_FONT } }; }
+      else if (code === 'NS' || code === 'NC') { cell.fill = fillOf(TS_HALF_FILL); cell.font = { bold: true, color: { argb: TS_HALF_FONT } }; }
+    });
+
+    const rng = `${dayColLetter0}${row}:${dayColLetter1}${row}`;
+    ws.getCell(row, fullCol).value = { formula: `COUNTIF(${rng},"F")` }; ws.getCell(row, fullCol).border = BORD;
+    ws.getCell(row, halfCol).value = { formula: `COUNTIF(${rng},"NS")+COUNTIF(${rng},"NC")` }; ws.getCell(row, halfCol).border = BORD;
+    ws.getCell(row, restCol).value = { formula: `COUNTIF(${rng},"N")` }; ws.getCell(row, restCol).border = BORD;
+    ws.getCell(row, incomeCol).value = { formula: `${colToLetter(fullCol)}${row}*${rateInfo.fullRef}+${colToLetter(halfCol)}${row}*${rateInfo.halfRef}` };
+    ws.getCell(row, incomeCol).border = BORD;
+  });
+
+  const rTotal = r0 + 1 + people.length;
+  ws.getCell(rTotal, 2).value = 'SỐ XE HOẠT ĐỘNG TRONG NGÀY';
+  dates.forEach((d, i) => {
+    const col = dayCol0 + i, letter = colToLetter(col);
+    const drng = `${letter}${r0 + 1}:${letter}${r0 + people.length}`;
+    ws.getCell(rTotal, col).value = { formula: `COUNTIF(${drng},"F")+(COUNTIF(${drng},"NS")+COUNTIF(${drng},"NC"))/2` };
+  });
+  ws.getCell(rTotal + 1, 2).value = 'TỔNG CHI PHÍ LƯƠNG CẢ THÁNG (đ)';
+  const incomeColLetter = colToLetter(incomeCol);
+  ws.getCell(rTotal + 1, 5).value = { formula: `SUM(${incomeColLetter}${r0 + 1}:${incomeColLetter}${r0 + people.length})` };
+
+  ws.getColumn(1).width = 6; ws.getColumn(2).width = 20; ws.getColumn(3).width = 16;
+  for (let i = 0; i < dates.length; i++) ws.getColumn(dayCol0 + i).width = 8;
+  ws.getColumn(fullCol).width = 10; ws.getColumn(halfCol).width = 10; ws.getColumn(restCol).width = 10; ws.getColumn(incomeCol).width = 16;
+  ws.views = [{ state: 'frozen', xSplit: 3, ySplit: r0 }];
+
+  return { sheetName, dayCol0, dataStartRow: r0 + 1, fullCol, halfCol, restCol, incomeCol };
+}
+
+// Sheet "Bang luong thang MM" — mỗi dòng CÔNG THỨC tham chiếu thẳng sang "Lich lam viec", không tính
+// lại — sửa lịch thì bảng lương tự cập nhật theo, đúng cơ chế file mẫu.
+function buildBangLuongSheet(wb, office, people, ltInfo, year, month) {
+  const mm = String(month).padStart(2, '0');
+  const sheetName = `Bang luong thang ${mm}`;
+  const ws = wb.addWorksheet(sheetName);
+  ws.getCell(1, 1).value = `BẢNG LƯƠNG THÁNG ${mm}/${year} — ${office.name.toUpperCase()}`;
+  ws.getCell(1, 1).font = TS_TIT;
+
+  const hdr = ['Họ và tên', 'Chức danh', 'Số ca Full', 'Số ca nửa', 'Ngày nghỉ', 'Tổng thu nhập tháng (đ)'];
+  hdr.forEach((label, j) => {
+    const c = ws.getCell(3, j + 1);
+    c.value = label; c.fill = fillOf(TS_HDR_ARGB); c.font = TS_HF; c.alignment = CENW; c.border = BORD;
+  });
+
+  const ref = (col, lichRow) => `'${ltInfo.sheetName}'!${colToLetter(col)}${lichRow}`;
+  people.forEach((p, idx) => {
+    const row = 4 + idx;
+    const lichRow = ltInfo.dataStartRow + idx;
+    ws.getCell(row, 1).value = { formula: ref(2, lichRow) };
+    ws.getCell(row, 2).value = { formula: ref(3, lichRow) };
+    ws.getCell(row, 3).value = { formula: ref(ltInfo.fullCol, lichRow) };
+    ws.getCell(row, 4).value = { formula: ref(ltInfo.halfCol, lichRow) };
+    ws.getCell(row, 5).value = { formula: ref(ltInfo.restCol, lichRow) };
+    ws.getCell(row, 6).value = { formula: ref(ltInfo.incomeCol, lichRow) };
+    for (let c = 1; c <= 6; c++) ws.getCell(row, c).border = BORD;
+  });
+
+  const rTot = 4 + people.length;
+  ws.getCell(rTot, 1).value = 'TỔNG CỘNG'; ws.getCell(rTot, 1).border = BORD;
+  ws.getCell(rTot, 6).value = { formula: `SUM(F4:F${rTot - 1})` }; ws.getCell(rTot, 6).border = BORD;
+  ws.getCell(rTot + 1, 1).value = 'Thu nhập bình quân/người/tháng (đ):';
+  ws.getCell(rTot + 1, 6).value = { formula: `F${rTot}/${people.length}` };
+
+  ws.getColumn(1).width = 20; ws.getColumn(2).width = 20; ws.getColumn(3).width = 12;
+  ws.getColumn(4).width = 12; ws.getColumn(5).width = 12; ws.getColumn(6).width = 20;
+}
+
 // Sheet "Cham cong thang MM" RIÊNG cho Lái Xe Trung Chuyển Sapa (tcsp) — bố cục/cột/công thức lấy
 // đúng theo file thật "Trung Chuyển/Chấm công Trung Chuyển/Chấm công TC Sapa - Tháng 07.2026.xlsx"
 // (sheet "BCC tháng X" + "Ký hiệu"), KHÁC hẳn buildChamCongMonthSheet dùng cho 3 văn phòng kia:
-// chấm công theo MÃ CA (C1/NS/NC) đếm bằng COUNTIF, không phải đếm giờ. Ô ngày là công thức dịch
-// ngược từ giờ ghi trong "Lich thang" (vd "05:30-23:00") sang đúng mã hiển thị ("C1") — sửa giờ ở
-// Lich thang thì bảng này tự cập nhật, giống cơ chế Lich lam viec -> Cham cong trong xep_lich_lam_viec.py.
-function tcsapaDayFormula(office, ltRef) {
-  const label = { F: 'C1', NS: 'NS', NC: 'NC' };
-  let expr = ltRef; // không khớp mã nào (vd bị kéo giãn giờ tuỳ chỉnh) -> hiện nguyên giờ
-  for (const def of office.shiftDefs) {
-    expr = `IF(${ltRef}="${def.hours}","${label[def.code] || def.code}",${expr})`;
-  }
-  return `IF(${ltRef}="NGHỈ","",${expr})`;
+// chấm công theo MÃ CA (C1/NS/NC) đếm bằng COUNTIF, không phải đếm giờ. Ô ngày là công thức dịch mã
+// ca (F/NS/NC/N) ghi sẵn trong "Lich lam viec" sang đúng mã hiển thị ("C1") — sửa mã ở đó thì bảng
+// này tự cập nhật, đúng cơ chế Lich lam viec -> Cham cong trong xep_lich_lam_viec.py.
+function tcsapaDayFormula(ltRef) {
+  return `IF(${ltRef}="F","C1",IF(${ltRef}="N","",${ltRef}))`;
 }
 
 function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, year, month, ltInfo) {
@@ -341,7 +504,7 @@ function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, year, mo
   const legendCell = ws.getCell(2, dayCol0);
   legendCell.value = `Ký hiệu: C1 = ca Full (${office.shiftDefs.find(d => d.code === 'F').hours}) | NS = nửa ca Sáng (${office.shiftDefs.find(d => d.code === 'NS').hours}) | `
     + `NC = nửa ca Chiều (${office.shiftDefs.find(d => d.code === 'NC').hours}) | để trống = nghỉ | TV/HV/KL/C2/HC/T#/L# = mã nhập tay nếu cần (không tự sinh từ web) | `
-    + `Cột ngày lấy tự động từ sheet "${ltInfo.sheetName}", sửa giờ ở đó thì bảng này tự cập nhật, không cần xuất lại file.`;
+    + `Cột ngày lấy tự động từ sheet "${ltInfo.sheetName}", sửa mã ca ở đó thì bảng này tự cập nhật, không cần xuất lại file.`;
   legendCell.font = TNR9; legendCell.fill = fillOf(CC_LEGENDY); legendCell.alignment = LEFTW;
 
   const r0 = 4;
@@ -414,7 +577,7 @@ function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, year, mo
       const colLetter = colToLetter(ltInfo.dayCol0 + i);
       const ltRef = `'${ltInfo.sheetName}'!${colLetter}${ltRow}`;
       const c = ws.getCell(row, dayCol0 + i);
-      c.value = { formula: tcsapaDayFormula(office, ltRef) };
+      c.value = { formula: tcsapaDayFormula(ltRef) };
       c.font = TNR9; c.alignment = CENW; c.border = BORD; c.fill = fillOf(CC_INPUTY);
     });
 
@@ -458,9 +621,9 @@ function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, year, mo
     c.value = t; c.fill = fillOf(CC_NAVY); c.font = TNR9BW; c.alignment = CENW; c.border = BORD;
   });
   const legendRows = [
-    [`${office.shiftDefs.find(d => d.code === 'F').hours} (ca Full)`, '', 'C1', 650000, 60000],
-    [`${office.shiftDefs.find(d => d.code === 'NS').hours} (nửa Sáng)`, '', 'NS', 450000, 40000],
-    [`${office.shiftDefs.find(d => d.code === 'NC').hours} (nửa Chiều)`, '', 'NC', 450000, 40000],
+    [`${office.shiftDefs.find(d => d.code === 'F').hours} (ca Full)`, '', 'C1', office.rates.full.base, office.rates.full.an_ca],
+    [`${office.shiftDefs.find(d => d.code === 'NS').hours} (nửa Sáng)`, '', 'NS', office.rates.half.base, office.rates.half.an_ca],
+    [`${office.shiftDefs.find(d => d.code === 'NC').hours} (nửa Chiều)`, '', 'NC', office.rates.half.base, office.rates.half.an_ca],
     ['Học việc', '', 'HV', '', ''],
     ["VP/lái xe không chia ca: đi làm chấm '1'", '', 1, '', ''],
   ];

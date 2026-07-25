@@ -1,6 +1,6 @@
 # Xếp Lịch VP
 
-Web app xếp lịch làm việc hằng tuần cho từng văn phòng (Tổng Đài VP, Tổng Đài Sapa, Tạp Vụ & Rửa Xe Sapa,
+Web app xếp lịch làm việc hằng tuần cho từng văn phòng (Tổng Đài 96 Võ Chí Công, Tổng Đài Sapa, Tạp Vụ & Rửa Xe Sapa,
 Lái Xe Trung Chuyển Sapa) — kéo-thả đổi ca ngay trên trình duyệt, cộng thêm 1 trang **master** xem tổng hợp
 lịch của cả 4 văn phòng cùng lúc.
 
@@ -91,7 +91,7 @@ tuần chưa lưu sẽ tự tính lại gợi ý theo dữ liệu mới; tuần 
 
 Mỗi "đội" (`team`) trong `offices-data.js` xoay vòng ca theo 1 trong 3 kiểu (`rotateBy`):
 
-- `week` — cả đội đổi sang mã ca kế tiếp trong `cycle` mỗi tuần (vd. Tổng Đài VP: Đội 1/2/3 đảo CA1→CA2→CA3).
+- `week` — cả đội đổi sang mã ca kế tiếp trong `cycle` mỗi tuần (vd. Tổng Đài 96 Võ Chí Công: Đội 1/2/3 đảo CA1→CA2→CA3).
 - `day` — từng người trong đội đổi mã ca mỗi ngày, lệch nhau theo thứ tự (vd. Tạp vụ 6 người / 5 vai trò/ngày; Lái xe TC Sapa 8 người / 6 xe, 2 người nghỉ mỗi ngày).
 - `fixed` — luôn 1 mã ca cố định (vd. CADEM ca đêm, Quản lý hành chính).
 
