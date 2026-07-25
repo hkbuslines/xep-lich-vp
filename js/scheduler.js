@@ -88,7 +88,12 @@ function suggestWeekSchedule(office, mondayDate) {
         }
         let code;
         if (team.rotateBy === 'day') {
-          code = team.cycle[(dayIdx + memberIdx) % team.cycle.length];
+          // Cộng thêm wIdx để cả vòng xoay dịch đi mỗi tuần — thiếu wIdx thì lịch y hệt nhau mãi
+          // mãi mỗi tuần (đúng ngày trong tuần luôn đúng 1 mã cố định cho từng người), và nếu số
+          // người khớp đúng độ dài cycle mà cycle dài hơn 7 (vd Lái xe TC Sapa: 8 người, cycle 8
+          // gồm 6 xe + 2 NGHI trên tuần 7 ngày) thì 2 người cố định luôn chỉ được 1 ngày nghỉ/tuần
+          // trong khi người khác được 2 — bất công vĩnh viễn nếu không xoay theo tuần.
+          code = team.cycle[(dayIdx + memberIdx + wIdx) % team.cycle.length];
         } else if (team.rotateBy === 'week') {
           const off = team.cycleOffset || 0;
           code = team.cycle[(wIdx + off) % team.cycle.length];

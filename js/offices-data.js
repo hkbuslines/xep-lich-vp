@@ -113,18 +113,21 @@ const OFFICES = [
   {
     id: 'tcsp',
     name: 'Lái Xe Trung Chuyển Sapa',
-    standardHoursPerDay: null, // lái xe chấm công theo NGÀY được phân xe (không tính giờ tăng ca theo giờ)
+    standardHoursPerDay: null, // lái xe chấm công theo CA (Full/nửa ca), không tính giờ tăng ca theo giờ
+    numVehicles: 6, // theo lich_lam_viec_config.json — 6 xe: 5 xe/1 người lái Full cả ngày + 1 xe chia đôi NS/NC
+    // Mã ca đúng thực tế vận hành (Xếp xe/lich_lam_viec_config.json + xep_lich_lam_viec.py), KHÔNG
+    // phải "mỗi người 1 xe cố định XE1..XE6" như bản cũ — mỗi ngày: numVehicles-1=5 người chạy Full
+    // nguyên 1 xe cả ngày (F, hiển thị "C1" trên Cham cong), 1 xe còn lại chia đôi cho 2 người (NS
+    // nửa sáng + NC nửa chiều), 1 người nghỉ. Giờ ca khớp đúng cột "Sapa" trong file thật
+    // "Trung Chuyển/.../Chấm công TC Sapa - Tháng 07.2026.xlsx" (sheet "Ký hiệu").
     shiftDefs: [
-      { code: 'XE1', name: 'Xe 1', hours: 'Cả ngày', color: '#4C6EF5' },
-      { code: 'XE2', name: 'Xe 2', hours: 'Cả ngày', color: '#2F9E44' },
-      { code: 'XE3', name: 'Xe 3', hours: 'Cả ngày', color: '#F08C00' },
-      { code: 'XE4', name: 'Xe 4', hours: 'Cả ngày', color: '#E64980' },
-      { code: 'XE5', name: 'Xe 5', hours: 'Cả ngày', color: '#15AABF' },
-      { code: 'XE6', name: 'Xe 6', hours: 'Cả ngày', color: '#5F3DC4' },
+      { code: 'F', name: 'Ca Full (C1)', hours: '05:30-23:00', color: '#4C6EF5' },
+      { code: 'NS', name: 'Nửa ca Sáng (NS)', hours: '05:00-14:00', color: '#2F9E44' },
+      { code: 'NC', name: 'Nửa ca Chiều (NC)', hours: '14:00-24:00', color: '#F08C00' },
     ],
     teams: [
       { id: 'LAIXE', name: 'Lái xe', rotateBy: 'day', noOvertime: true,
-        cycle: ['XE1', 'XE2', 'XE3', 'XE4', 'XE5', 'XE6', REST_CODE, REST_CODE],
+        cycle: ['F', 'F', 'F', 'F', 'F', 'NS', 'NC', REST_CODE],
         people: [
           { id: 'HK0125', name: 'Nguyễn Văn Đức' },
           { id: 'HK0471', name: 'Nguyễn Duy Đức' },
@@ -132,7 +135,7 @@ const OFFICES = [
           { id: 'HK0311', name: 'Đỗ Đình Cường' },
           { id: 'HK0304', name: 'Phạm Văn Toàn' },
           { id: 'HK0335', name: 'Nguyễn Việt Ngọc' },
-          { id: 'MANHCHUAN', name: 'Mạnh Chuẩn' },
+          { id: 'MANHCHUAN', name: 'Mạnh Chuẩn' }, // chưa có mã NV chính thức (employee_info để trống)
           { id: 'HK0369', name: 'Trần Văn Tuân' },
         ] },
     ],
