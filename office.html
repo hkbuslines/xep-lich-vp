@@ -31,9 +31,6 @@
   </section>
 
   <section class="toolbar">
-    <label class="who-label">Tên người xếp lịch:
-      <input id="whoInput" type="text" placeholder="VD: Hương">
-    </label>
     <button id="regenBtn" class="btn ghost">↻ Tạo lại gợi ý</button>
     <button id="saveBtn" class="btn primary">💾 Lưu lịch tuần</button>
     <button id="exportBtn" class="btn ghost">📥 Xuất Excel tuần</button>
@@ -41,10 +38,13 @@
   </section>
 
   <section class="toolbar">
-    <label class="who-label">Xuất file tháng:
-      <input id="monthPicker" type="month">
+    <label class="who-label">Từ ngày:
+      <input id="exportFromDate" type="date">
     </label>
-    <button id="exportMonthBtn" class="btn ghost">📊 Xuất Lịch + Chấm công tháng</button>
+    <label class="who-label">Đến ngày:
+      <input id="exportToDate" type="date">
+    </label>
+    <button id="exportMonthBtn" class="btn ghost">📊 Xuất Lịch + Chấm công</button>
   </section>
 
   <section class="timeline-wrap">

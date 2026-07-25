@@ -13,11 +13,11 @@ const els = {
   nextWeek: document.getElementById('nextWeek'),
   weekLabel: document.getElementById('weekLabel'),
   weekPicker: document.getElementById('weekPicker'),
-  whoInput: document.getElementById('whoInput'),
   regenBtn: document.getElementById('regenBtn'),
   saveBtn: document.getElementById('saveBtn'),
   exportBtn: document.getElementById('exportBtn'),
-  monthPicker: document.getElementById('monthPicker'),
+  exportFromDate: document.getElementById('exportFromDate'),
+  exportToDate: document.getElementById('exportToDate'),
   exportMonthBtn: document.getElementById('exportMonthBtn'),
   statusText: document.getElementById('statusText'),
   timeline: document.getElementById('timeline'),
@@ -214,9 +214,9 @@ async function saveWeek() {
   const origLabel = els.saveBtn.textContent;
   els.saveBtn.textContent = 'Đang lưu…';
   try {
-    await StorageAPI.saveWeek(state.office.id, weekId, state.schedule, { updatedBy: els.whoInput.value.trim() });
+    await StorageAPI.saveWeek(state.office.id, weekId, state.schedule, {});
     state.dirty = false;
-    els.statusText.textContent = `Đã lưu lúc ${new Date().toLocaleString('vi-VN')}${els.whoInput.value ? ' bởi ' + els.whoInput.value : ''}`;
+    els.statusText.textContent = `Đã lưu lúc ${new Date().toLocaleString('vi-VN')}`;
     els.statusText.className = 'status-text';
   } catch (err) {
     console.error(err);
@@ -277,9 +277,6 @@ function init() {
   const todayOffset = Math.round((today - state.monday) / 86400000);
   state.dayIdx = (todayOffset >= 0 && todayOffset <= 6) ? todayOffset : 0;
 
-  els.whoInput.value = localStorage.getItem('xeplich:who') || '';
-  els.whoInput.addEventListener('input', () => localStorage.setItem('xeplich:who', els.whoInput.value));
-
   els.tabDayBtn.addEventListener('click', () => switchViewMode('day'));
   els.tabWeekBtn.addEventListener('click', () => switchViewMode('week'));
   els.dayPrev.addEventListener('click', () => shiftDay(-1));
@@ -311,20 +308,27 @@ function init() {
     }
   });
 
-  els.monthPicker.value = isoDate(state.monday).slice(0, 7);
+  // Mặc định: cả tháng chứa tuần đang xem — người dùng chỉnh lại 2 ô ngày nếu muốn xuất 1 khoảng
+  // ngày bất kỳ (không nhất thiết trọn tháng, không nhất thiết bắt đầu từ ngày 1).
+  const defaultMonthStart = new Date(Date.UTC(state.monday.getUTCFullYear(), state.monday.getUTCMonth(), 1));
+  const defaultMonthEnd = new Date(Date.UTC(state.monday.getUTCFullYear(), state.monday.getUTCMonth() + 1, 0));
+  els.exportFromDate.value = isoDate(defaultMonthStart);
+  els.exportToDate.value = isoDate(defaultMonthEnd);
   els.exportMonthBtn.addEventListener('click', async () => {
-    const [y, m] = els.monthPicker.value.split('-').map(Number);
-    if (!y || !m) { alert('Chọn tháng cần xuất trước đã.'); return; }
+    if (!els.exportFromDate.value || !els.exportToDate.value) { alert('Chọn từ ngày và đến ngày cần xuất trước đã.'); return; }
+    const fromDate = parseISODate(els.exportFromDate.value);
+    const toDate = parseISODate(els.exportToDate.value);
+    if (fromDate > toDate) { alert('"Từ ngày" phải trước hoặc trùng "Đến ngày".'); return; }
     els.exportMonthBtn.disabled = true;
-    els.exportMonthBtn.textContent = 'Đang gộp lịch cả tháng…';
+    els.exportMonthBtn.textContent = 'Đang gộp lịch…';
     try {
-      await exportMonthExcel(state.office, y, m);
+      await exportRangeExcel(state.office, fromDate, toDate);
     } catch (err) {
       console.error(err);
-      alert('Xuất file tháng bị lỗi: ' + err.message);
+      alert('Xuất file bị lỗi: ' + err.message);
     } finally {
       els.exportMonthBtn.disabled = false;
-      els.exportMonthBtn.textContent = '📊 Xuất Lịch + Chấm công tháng';
+      els.exportMonthBtn.textContent = '📊 Xuất Lịch + Chấm công';
     }
   });
 
