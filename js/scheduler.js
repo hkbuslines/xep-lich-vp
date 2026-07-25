@@ -108,6 +108,25 @@ function suggestWeekSchedule(office, mondayDate) {
   return result;
 }
 
+/**
+ * Lịch TRỐNG cho 1 văn phòng — mọi người/mọi ngày đều "Nghỉ" (chưa gán ca), để người xếp lịch tự
+ * bấm chọn ca cho từng người/ngày qua tab "Theo ngày" thay vì bị áp sẵn 1 vòng xoay tự động. Dùng cho
+ * văn phòng nào KHÔNG muốn suggestWeekSchedule() gợi ý sẵn (vd Tổng Đài — ca đêm không cố định 2
+ * người mãi mãi, để họ tự đảo người phù hợp mỗi tuần thay vì thuật toán áp đặt).
+ */
+function blankWeekSchedule(office) {
+  const result = {};
+  for (const team of office.teams) {
+    for (const person of team.people) {
+      result[person.id] = {
+        name: person.name, title: person.title || '', teamId: team.id,
+        days: new Array(7).fill(REST_CODE), ranges: new Array(7).fill(null), notes: new Array(7).fill(''),
+      };
+    }
+  }
+  return result;
+}
+
 function shiftDefFor(office, code) {
   if (code === REST_CODE) return REST_DEF;
   return office.shiftDefs.find(s => s.code === code) || { code, name: code, hours: '', color: '#999' };

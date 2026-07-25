@@ -21,26 +21,29 @@ function rangeDates(fromDate, toDate) {
 
 function fmtDDMM(d) { return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`; }
 
-// Nhãn hiển thị cho cả khoảng ngày đang xuất — office.html cho chọn THÁNG trước rồi mới chọn ngày
-// trong đúng tháng đó, nên luôn giữ được đúng "THÁNG MM/YYYY" quen thuộc trên tiêu đề file xuất; nếu
-// người dùng chỉ xuất 1 phần của tháng (không phải ngày 1 -> ngày cuối) thì ghi thêm khoảng ngày cụ
-// thể bên cạnh. Trường hợp khác tháng (hiện không thể chọn được từ UI, chỉ để phòng hờ khi gọi hàm
-// trực tiếp) vẫn hiển thị hợp lý bằng dd/mm cho cả 2 đầu.
-function periodLabel(dates) {
-  const first = dates[0], last = dates[dates.length - 1];
-  const sameMonth = first.getUTCFullYear() === last.getUTCFullYear() && first.getUTCMonth() === last.getUTCMonth();
+// Nhãn hiển thị cho khoảng ngày ĐANG CHỌN (fromDate..toDate) — office.html cho chọn THÁNG trước rồi
+// mới chọn ngày trong đúng tháng đó, nên luôn giữ được đúng "THÁNG MM/YYYY" quen thuộc trên tiêu đề
+// file xuất; nếu người dùng chỉ xuất 1 phần của tháng (không phải ngày 1 -> ngày cuối) thì ghi thêm
+// khoảng ngày cụ thể bên cạnh — CÁC CỘT trong sheet vẫn đủ cả tháng (xem inRange()), nhãn này chỉ nói
+// rõ phần nào trong đó là kỳ thực sự đang xuất.
+function periodLabel(fromDate, toDate) {
+  const sameMonth = fromDate.getUTCFullYear() === toDate.getUTCFullYear() && fromDate.getUTCMonth() === toDate.getUTCMonth();
   if (!sameMonth) {
-    return first.getUTCFullYear() === last.getUTCFullYear()
-      ? `${fmtDDMM(first)} – ${fmtDDMM(last)}/${last.getUTCFullYear()}`
-      : `${fmtDDMM(first)}/${first.getUTCFullYear()} – ${fmtDDMM(last)}/${last.getUTCFullYear()}`;
+    return fromDate.getUTCFullYear() === toDate.getUTCFullYear()
+      ? `${fmtDDMM(fromDate)} – ${fmtDDMM(toDate)}/${toDate.getUTCFullYear()}`
+      : `${fmtDDMM(fromDate)}/${fromDate.getUTCFullYear()} – ${fmtDDMM(toDate)}/${toDate.getUTCFullYear()}`;
   }
-  const mm = String(first.getUTCMonth() + 1).padStart(2, '0'), yyyy = first.getUTCFullYear();
-  const daysInThisMonth = new Date(Date.UTC(yyyy, first.getUTCMonth() + 1, 0)).getUTCDate();
-  const isFullMonth = first.getUTCDate() === 1 && last.getUTCDate() === daysInThisMonth;
+  const mm = String(fromDate.getUTCMonth() + 1).padStart(2, '0'), yyyy = fromDate.getUTCFullYear();
+  const daysInThisMonth = new Date(Date.UTC(yyyy, fromDate.getUTCMonth() + 1, 0)).getUTCDate();
+  const isFullMonth = fromDate.getUTCDate() === 1 && toDate.getUTCDate() === daysInThisMonth;
   return isFullMonth
     ? `THÁNG ${mm}/${yyyy}`
-    : `THÁNG ${mm}/${yyyy} (${String(first.getUTCDate()).padStart(2, '0')}–${String(last.getUTCDate()).padStart(2, '0')})`;
+    : `THÁNG ${mm}/${yyyy} (${String(fromDate.getUTCDate()).padStart(2, '0')}–${String(toDate.getUTCDate()).padStart(2, '0')})`;
 }
+
+// Ngày `d` có nằm trong khoảng ĐANG CHỌN không — cột nào ngoài khoảng này (nhưng vẫn trong tháng) thì
+// ĐỂ TRỐNG dữ liệu thay vì không hiện cột, để file xuất luôn đủ cả tháng theo đúng yêu cầu.
+function inRange(d, fromDate, toDate) { return d >= fromDate && d <= toDate; }
 
 function monthPersonList(office) {
   const list = [];
@@ -69,7 +72,8 @@ async function computeRangeSchedule(office, dates) {
   for (const monday of mondays) {
     const wId = isoDate(monday);
     const saved = await StorageAPI.loadWeek(office.id, wId);
-    weekSchedules[wId] = (saved && saved.assignments) ? saved.assignments : suggestWeekSchedule(office, monday);
+    weekSchedules[wId] = (saved && saved.assignments) ? saved.assignments
+      : (office.manualOnly ? blankWeekSchedule(office) : suggestWeekSchedule(office, monday));
   }
   const result = {};
   for (const { id, name, title, team } of monthPersonList(office)) {
@@ -133,7 +137,13 @@ const BORD = { top: THIN, bottom: THIN, left: THIN, right: THIN };
 function fillOf(argb) { return { type: 'pattern', pattern: 'solid', fgColor: { argb } }; }
 
 async function exportRangeExcel(office, fromDate, toDate) {
-  const dates = rangeDates(fromDate, toDate);
+  // Cột trong sheet luôn đủ CẢ THÁNG chứa fromDate (office.html đảm bảo fromDate/toDate cùng 1 tháng)
+  // — ngày ngoài [fromDate, toDate] vẫn có cột nhưng ĐỂ TRỐNG dữ liệu, theo đúng yêu cầu người dùng
+  // (dễ đối chiếu với bảng công giấy vốn luôn in đủ ngày trong tháng).
+  const year = fromDate.getUTCFullYear(), month = fromDate.getUTCMonth() + 1;
+  const monthStart = new Date(Date.UTC(year, month - 1, 1));
+  const monthEnd = new Date(Date.UTC(year, month, 0));
+  const dates = rangeDates(monthStart, monthEnd);
   const monthData = await computeRangeSchedule(office, dates);
   const people = monthPersonList(office);
 
@@ -145,10 +155,10 @@ async function exportRangeExcel(office, fromDate, toDate) {
     // TCSP xuất đúng 4 sheet (Thong so / Lich lam viec / Bang luong / Cham cong) — y hệt cấu trúc
     // export_hybrid_formula_excel() trong xep_lich_lam_viec.py, KHÁC hẳn 3 văn phòng kia (2 sheet
     // Lich thang + Cham cong). Theo yêu cầu người dùng: chỉ TCSP cần đổi, các văn phòng khác giữ nguyên.
-    buildTcspExcel(wb, office, monthData, people, dates);
+    buildTcspExcel(wb, office, monthData, people, dates, fromDate, toDate);
   } else {
-    const ltInfo = buildLichThangSheet(wb, office, monthData, people, dates);
-    buildChamCongMonthSheet(wb, office, monthData, people, dates, ltInfo);
+    const ltInfo = buildLichThangSheet(wb, office, monthData, people, dates, fromDate, toDate);
+    buildChamCongMonthSheet(wb, office, monthData, people, dates, ltInfo, fromDate, toDate);
   }
 
   const buf = await wb.xlsx.writeBuffer();
@@ -174,14 +184,14 @@ function fileNameSuffix(fromDate, toDate) {
 
 // Sheet "Lich thang" — 1 dòng/người, mỗi ô ngày là TEXT "HH:MM-HH:MM" (hoặc "NGHỈ") — nguồn dữ liệu
 // để "Cham cong" tham chiếu công thức sang. Trả về vị trí hàng/cột để sheet Cham cong trỏ đúng.
-function buildLichThangSheet(wb, office, monthData, people, dates) {
+function buildLichThangSheet(wb, office, monthData, people, dates, fromDate, toDate) {
   const sheetName = 'Lich thang';
   const ws = wb.addWorksheet(sheetName);
   const dayCol0 = 3; // cột C
   const lastCol = dayCol0 + dates.length - 1;
 
   ws.mergeCells(1, 1, 1, lastCol);
-  ws.getCell(1, 1).value = `LỊCH LÀM VIỆC — ${office.name.toUpperCase()} — ${periodLabel(dates)}`;
+  ws.getCell(1, 1).value = `LỊCH LÀM VIỆC — ${office.name.toUpperCase()} — ${periodLabel(fromDate, toDate)}`;
   ws.getCell(1, 1).font = TNR9BW;
   ws.getCell(1, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CC_NAVY } };
   ws.getCell(1, 1).alignment = CENW;
@@ -207,7 +217,7 @@ function buildLichThangSheet(wb, office, monthData, people, dates) {
   });
   ws.mergeCells(r0, dayCol0, r0, lastCol);
   const hcell = ws.getCell(r0, dayCol0);
-  hcell.value = `NGÀY TRONG KỲ ${periodLabel(dates)}`;
+  hcell.value = `NGÀY TRONG KỲ ${periodLabel(fromDate, toDate)}`;
   hcell.font = TNR9BW; hcell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CC_BLUE } }; hcell.border = BORD;
   dates.forEach((d, i) => {
     const c = ws.getCell(r0 + 1, dayCol0 + i);
@@ -225,8 +235,8 @@ function buildLichThangSheet(wb, office, monthData, people, dates) {
     const person = monthData[p.id];
     dates.forEach((d, i) => {
       const c = ws.getCell(row, dayCol0 + i);
-      c.value = formatDayCellText(office, person.days[i], person.ranges[i]);
       c.font = TNR9; c.alignment = CENW; c.border = BORD;
+      if (inRange(d, fromDate, toDate)) c.value = formatDayCellText(office, person.days[i], person.ranges[i]);
     });
   });
 
@@ -240,7 +250,7 @@ function buildLichThangSheet(wb, office, monthData, people, dates) {
 
 // Sheet "Cham cong" — 2 dòng/người (chính = đi làm, phụ = công làm thêm), TẤT CẢ là công thức tham
 // chiếu sang "Lich thang" — đúng định dạng file thật trong "Chấm công từng VP T05.2026".
-function buildChamCongMonthSheet(wb, office, monthData, people, dates, ltInfo) {
+function buildChamCongMonthSheet(wb, office, monthData, people, dates, ltInfo, fromDate, toDate) {
   const sheetName = 'Cham cong';
   const ws = wb.addWorksheet(sheetName);
   const dayCol0 = 6; // F
@@ -251,7 +261,7 @@ function buildChamCongMonthSheet(wb, office, monthData, people, dates, ltInfo) {
   const standardHours = office.standardHoursPerDay;
 
   ws.mergeCells(1, 1, 1, lastCol);
-  ws.getCell(1, 1).value = `BẢNG CHẤM CÔNG — ${office.name.toUpperCase()} — ${periodLabel(dates)}`;
+  ws.getCell(1, 1).value = `BẢNG CHẤM CÔNG — ${office.name.toUpperCase()} — ${periodLabel(fromDate, toDate)}`;
   ws.getCell(1, 1).font = TNR9BW;
   ws.getCell(1, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CC_NAVY } };
   ws.getCell(1, 1).alignment = CENW;
@@ -281,7 +291,7 @@ function buildChamCongMonthSheet(wb, office, monthData, people, dates, ltInfo) {
   });
   ws.mergeCells(r0, dayCol0, r0, dayCol0 + dates.length - 1);
   const hcell = ws.getCell(r0, dayCol0);
-  hcell.value = `NGÀY TRONG KỲ ${periodLabel(dates)}`;
+  hcell.value = `NGÀY TRONG KỲ ${periodLabel(fromDate, toDate)}`;
   hcell.font = TNR9BW; hcell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: CC_BLUE } }; hcell.border = BORD;
   dates.forEach((d, i) => {
     const c = ws.getCell(r0 + 1, dayCol0 + i);
@@ -301,7 +311,7 @@ function buildChamCongMonthSheet(wb, office, monthData, people, dates, ltInfo) {
     const mainRow = dataStartRow + idx * 2;
     const subRow = mainRow + 1;
     const ltRow = ltInfo.dataStartRow + idx; // cùng thứ tự người như Lich thang
-    [[1, idx + 1], [2, p.id], [3, p.name], [4, p.title || (p.team.name || p.team.id)], [5, '']].forEach(([col, val]) => {
+    [[1, idx + 1], [2, p.id], [3, p.name], [4, p.title || office.defaultTitle || p.team.name || p.team.id], [5, '']].forEach(([col, val]) => {
       const c = ws.getCell(mainRow, col);
       c.value = val; c.font = TNR9; c.alignment = CENW; c.border = BORD;
       ws.getCell(subRow, col).border = BORD;

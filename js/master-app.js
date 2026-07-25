@@ -41,7 +41,7 @@ function renderOfficeTimeline(office, schedule, meta) {
   if (!root) return;
   metaEl.textContent = meta && meta.updatedAt
     ? `Đã lưu lúc ${new Date(meta.updatedAt).toLocaleString('vi-VN')}${meta.updatedBy ? ' bởi ' + meta.updatedBy : ''}`
-    : 'Chưa có lịch đã lưu cho tuần này — đang hiện gợi ý tự động.';
+    : (office.manualOnly ? 'Chưa có lịch đã lưu cho tuần này — sheet đang để trống.' : 'Chưa có lịch đã lưu cho tuần này — đang hiện gợi ý tự động.');
   renderTimeline(root, office, schedule, weekDates(mMonday), { editable: false });
 }
 
@@ -51,7 +51,7 @@ function loadOffice(office) {
     if (saved && saved.assignments) {
       renderOfficeTimeline(office, saved.assignments, saved);
     } else {
-      renderOfficeTimeline(office, suggestWeekSchedule(office, mMonday), null);
+      renderOfficeTimeline(office, office.manualOnly ? blankWeekSchedule(office) : suggestWeekSchedule(office, mMonday), null);
     }
   });
   unsubs.push(unsub);

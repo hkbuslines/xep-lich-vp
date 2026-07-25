@@ -12,6 +12,11 @@ const OFFICES = [
     id: 'tongdai',
     name: 'Tổng Đài 96 Võ Chí Công',
     standardHoursPerDay: 9, // đủ 9h/ngày = 1 công chính, vượt = 0.1 công/giờ tăng ca (sheet Cham cong)
+    // Không dùng suggestWeekSchedule() gợi ý sẵn (vốn xoay CA1/2/3 theo đội cố định + giữ nguyên 2
+    // người CADEM mãi mãi) — tuần chưa xếp thì để TRỐNG (blankWeekSchedule), để tổng đài tự xếp ca
+    // từng người, kể cả tự đảo người trực đêm, không bị thuật toán áp đặt cố định.
+    manualOnly: true,
+    defaultTitle: 'Nhân viên Tổng đài', // chức danh mặc định khi xuất Excel, thay vì hiện tên đội (Đội 1/2/3)
     shiftDefs: [
       { code: 'CA1', name: 'Ca 1 (Sáng)', hours: '06:00-15:00', color: '#4C6EF5' },
       { code: 'CA2', name: 'Ca 2 (Chiều-Tối)', hours: '15:00-24:00', color: '#2F9E44' },

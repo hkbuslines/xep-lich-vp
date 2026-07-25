@@ -213,6 +213,10 @@ async function loadWeek() {
     state.schedule = normalizeSchedule(saved.assignments);
     els.statusText.textContent = `Đã lưu lúc ${new Date(saved.updatedAt).toLocaleString('vi-VN')}${saved.updatedBy ? ' bởi ' + saved.updatedBy : ''}`;
     els.statusText.className = 'status-text';
+  } else if (state.office.manualOnly) {
+    state.schedule = blankWeekSchedule(state.office);
+    els.statusText.textContent = 'Chưa có lịch đã lưu — sheet đang để trống, tự xếp ca cho từng người rồi bấm Lưu để chốt.';
+    els.statusText.className = 'status-text dirty';
   } else {
     state.schedule = suggestWeekSchedule(state.office, state.monday);
     els.statusText.textContent = 'Chưa có lịch đã lưu — đang hiện gợi ý tự động, bấm Lưu để chốt.';
@@ -305,9 +309,13 @@ function init() {
     setUrl();
     loadWeek();
   });
+  if (state.office.manualOnly) els.regenBtn.textContent = '↻ Xoá hết, xếp lại từ đầu';
   els.regenBtn.addEventListener('click', () => {
-    if (state.dirty && !confirm('Tạo lại gợi ý sẽ ghi đè các thay đổi chưa lưu. Tiếp tục?')) return;
-    state.schedule = suggestWeekSchedule(state.office, state.monday);
+    const confirmMsg = state.office.manualOnly
+      ? 'Xoá hết sẽ ghi đè các thay đổi chưa lưu, đưa cả tuần về trạng thái trống. Tiếp tục?'
+      : 'Tạo lại gợi ý sẽ ghi đè các thay đổi chưa lưu. Tiếp tục?';
+    if (state.dirty && !confirm(confirmMsg)) return;
+    state.schedule = state.office.manualOnly ? blankWeekSchedule(state.office) : suggestWeekSchedule(state.office, state.monday);
     markDirty();
     renderView();
   });
