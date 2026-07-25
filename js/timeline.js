@@ -64,8 +64,14 @@ function buildDaySegments(office, person) {
   const perDay = days.map(() => []);
   days.forEach((code, dayIdx) => {
     const segs = effectiveRanges(office, code, person.ranges && person.ranges[dayIdx]);
+    // Nếu ca đêm hôm trước đã vắt sang tới giờ carryEnd (vd 07:00), đoạn của CHÍNH ngày hôm nay
+    // (thường là cả ngày "Nghỉ", s=0) phải bắt đầu tính từ carryEnd trở đi — nếu không sẽ đè lên
+    // đúng khoảng giờ mà đoạn vắt đang vẽ, nhìn như vừa làm vừa nghỉ cùng lúc.
+    const carryEnd = perDay[dayIdx].reduce((m, seg) => seg.carry ? Math.max(m, seg.e) : m, 0);
     segs.forEach(([s, e], segIdx) => {
-      perDay[dayIdx].push({ s, e: Math.min(e, 24), code, carry: false, segIdx });
+      const cs = Math.max(s, carryEnd);
+      const ce = Math.min(e, 24);
+      if (cs < ce) perDay[dayIdx].push({ s: cs, e: ce, code, carry: false, segIdx });
       if (e > 24 && dayIdx + 1 < days.length) {
         perDay[dayIdx + 1].push({ s: 0, e: e - 24, code, carry: true, segIdx });
       }
