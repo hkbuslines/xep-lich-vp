@@ -84,12 +84,15 @@ function buildBarEl(office, person, p, dayIdx, seg, opts, root) {
   bar.style.width = (((e - s) / 24) * 100) + '%';
   const hmLabel = code === REST_CODE ? 'Nghỉ' : (fmtHM(s) + '–' + fmtHM(e));
   const wide = (e - s) >= 4;
+  const label = document.createElement('span');
+  label.className = 'tl-bar-label';
+  bar.appendChild(label);
   if (carry) {
     bar.title = `${person.name} — ${def.name}: tiếp tục từ tối hôm trước đến ${fmtHM(e)} (đổi ca này ở ngày hôm trước)`;
-    bar.textContent = wide ? '⋯' + fmtHM(e) : '';
+    label.textContent = wide ? '⋯' + fmtHM(e) : '';
   } else {
     bar.title = `${person.name} — ${def.name} (${hmLabel})`;
-    bar.textContent = wide ? hmLabel : (code === REST_CODE ? 'Nghỉ' : '');
+    label.textContent = wide ? hmLabel : (code === REST_CODE ? 'Nghỉ' : '');
     if (opts.editable) {
       bar.draggable = true;
       bar.style.cursor = 'grab';

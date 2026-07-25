@@ -199,11 +199,21 @@ async function loadWeek() {
 async function saveWeek() {
   const weekId = isoDate(state.monday);
   els.saveBtn.disabled = true;
-  await StorageAPI.saveWeek(state.office.id, weekId, state.schedule, { updatedBy: els.whoInput.value.trim() });
-  els.saveBtn.disabled = false;
-  state.dirty = false;
-  els.statusText.textContent = `Đã lưu lúc ${new Date().toLocaleString('vi-VN')}${els.whoInput.value ? ' bởi ' + els.whoInput.value : ''}`;
-  els.statusText.className = 'status-text';
+  const origLabel = els.saveBtn.textContent;
+  els.saveBtn.textContent = 'Đang lưu…';
+  try {
+    await StorageAPI.saveWeek(state.office.id, weekId, state.schedule, { updatedBy: els.whoInput.value.trim() });
+    state.dirty = false;
+    els.statusText.textContent = `Đã lưu lúc ${new Date().toLocaleString('vi-VN')}${els.whoInput.value ? ' bởi ' + els.whoInput.value : ''}`;
+    els.statusText.className = 'status-text';
+  } catch (err) {
+    console.error(err);
+    els.statusText.textContent = 'Lưu thất bại: ' + err.message;
+    els.statusText.className = 'status-text dirty';
+  } finally {
+    els.saveBtn.disabled = false;
+    els.saveBtn.textContent = origLabel;
+  }
 }
 
 function shiftWeek(deltaDays) {
