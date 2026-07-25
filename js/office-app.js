@@ -30,6 +30,7 @@ const els = {
   staffAddRowBtn: document.getElementById('staffAddRowBtn'),
   staffListSaveBtn: document.getElementById('staffListSaveBtn'),
   staffListStatus: document.getElementById('staffListStatus'),
+  staffTeamHeader: document.getElementById('staffTeamHeader'),
 };
 
 let state = {
@@ -78,14 +79,19 @@ function escapeHtml(s) {
 // tên (MANHCHUAN/HOANGTHANHHAI...), hiện input Mã NV trống để không gây nhầm là mã chính thức.
 function isRealStaffId(id) { return /\d/.test(id); }
 
+// Chỉ hiện cột "Tổ/Đội" khi văn phòng có TỪ 2 team trở lên — văn phòng chỉ 1 team (vd Tổng Đài
+// 96 Võ Chí Công, gộp hết về team "NV") thì cột này chẳng có gì để chọn, hiện ra chỉ gây rối.
+function multiTeam() { return state.office.teams.length > 1; }
+
 function writeStaffRowsToDom(rows) {
+  els.staffTeamHeader.hidden = !multiTeam();
   els.staffListBody.innerHTML = rows.map((r, i) => `
     <tr>
       <td>${i + 1}</td>
       <td><input type="text" class="staff-id-input" value="${escapeHtml(r.id)}" placeholder="(chưa có)"></td>
       <td><input type="text" class="staff-name-input" value="${escapeHtml(r.name)}" placeholder="Họ tên"></td>
-      <td><select class="staff-team-select">${state.office.teams.map(t =>
-        `<option value="${t.id}"${t.id === r.teamId ? ' selected' : ''}>${escapeHtml(t.name || t.id)}</option>`).join('')}</select></td>
+      ${multiTeam() ? `<td><select class="staff-team-select">${state.office.teams.map(t =>
+        `<option value="${t.id}"${t.id === r.teamId ? ' selected' : ''}>${escapeHtml(t.name || t.id)}</option>`).join('')}</select></td>` : ''}
       <td><input type="text" class="staff-title-input" value="${escapeHtml(r.title)}" placeholder="(mặc định)"></td>
       <td><button type="button" class="staff-row-remove" aria-label="Xoá nhân viên">×</button></td>
     </tr>
@@ -100,10 +106,11 @@ function writeStaffRowsToDom(rows) {
 }
 
 function readStaffRowsFromDom() {
+  const teamSelect = tr => tr.querySelector('.staff-team-select');
   return [...els.staffListBody.querySelectorAll('tr')].map(tr => ({
     id: tr.querySelector('.staff-id-input').value.trim(),
     name: tr.querySelector('.staff-name-input').value.trim(),
-    teamId: tr.querySelector('.staff-team-select').value,
+    teamId: teamSelect(tr) ? teamSelect(tr).value : state.office.teams[0].id,
     title: tr.querySelector('.staff-title-input').value.trim(),
   }));
 }

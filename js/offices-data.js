@@ -24,32 +24,27 @@ const OFFICES = [
       { code: 'CADEM', name: 'Ca Đêm', hours: '21:00-07:00', color: '#5F3DC4' },
       { code: 'HC', name: 'Hành chính', hours: '08:00-17:00', color: '#868E96' },
     ],
+    // Chỉ 1 team duy nhất (không còn Đội 1/2/3/Ca đêm cố định như trước) — vì manualOnly:true nên
+    // rotateBy/cycle/restPerWeek của team KHÔNG được dùng nữa (blankWeekSchedule() bỏ qua hết,
+    // Tổng Đài tự xếp tay từng người/ngày), và timeline giờ nhóm hiển thị theo CA đang làm (xem
+    // groupPeopleByShift trong timeline.js) chứ không theo "Đội" — nên "Đội" chỉ còn là ngăn chứa nội
+    // bộ, không có ý nghĩa gì để hiện ra, dẹp bỏ cho đỡ rối khi sửa "Danh sách nhân viên".
     teams: [
-      { id: 'QL', name: 'Quản lý', rotateBy: 'fixed', cycle: ['HC'], dayOff: [7],
-        people: [{ id: 'HK0009', name: 'Nguyễn Thị Hương', title: 'Quản lý' }] },
-      { id: 'DOI1', name: 'Đội 1', rotateBy: 'week', cycle: ['CA1', 'CA2', 'CA3'], cycleOffset: 0, restPerWeek: 1,
+      { id: 'NV', name: 'Nhân viên',
         people: [
+          { id: 'HK0009', name: 'Nguyễn Thị Hương', title: 'Quản lý' },
           { id: 'HK0015', name: 'Hà Hiểu My' },
           { id: 'HK0046', name: 'Lê Thị Hương Giang' },
           { id: 'HK0059', name: 'Nguyễn Thành Luân' },
           { id: 'HK0066', name: 'Nguyễn Thị Duyên' },
-        ] },
-      { id: 'DOI2', name: 'Đội 2', rotateBy: 'week', cycle: ['CA1', 'CA2', 'CA3'], cycleOffset: 1, restPerWeek: 1,
-        people: [
           { id: 'HK0104', name: 'Vì Yến Nhi' },
           { id: 'HK0131', name: 'Phạm Khánh Linh' },
           { id: 'HK0161', name: 'Nguyễn Thị Thu Hằng' },
           { id: 'HK0200', name: 'Nguyễn Thị Thanh Thanh' },
-        ] },
-      { id: 'DOI3', name: 'Đội 3', rotateBy: 'week', cycle: ['CA1', 'CA2', 'CA3'], cycleOffset: 2, restPerWeek: 1,
-        people: [
           { id: 'HK0220', name: 'Đào Ngọc Dũng' },
           { id: 'HK0341', name: 'Phạm Thị Hoa Mai' },
           { id: 'HK0342', name: 'Phạm Phương Anh' },
           { id: 'HK0349', name: 'Trần Khánh Phương' },
-        ] },
-      { id: 'CADEM', name: 'Ca đêm (cố định)', rotateBy: 'fixed', cycle: ['CADEM'], restPerWeek: 1,
-        people: [
           { id: 'HK0360', name: 'Phạm Trung Dũng' },
           { id: 'HK0412', name: 'Nguyễn Thị Thúy Hằng' },
         ] },
