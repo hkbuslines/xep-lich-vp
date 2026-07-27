@@ -392,11 +392,11 @@ function buildChamCongMonthSheet(wb, office, monthData, people, dates, ltInfo, f
 // 4 sheet của TCSP (Thong so / Lich lam viec / Bang luong / Cham cong) — PHỎNG THEO ĐÚNG
 // export_hybrid_formula_excel() trong xep_lich_lam_viec.py, để file xuất từ web y hệt file mẫu
 // "lich_lam_viec_hybrid_thang_MM_YYYY.xlsx". Chỉ áp dụng cho TCSP, không đụng 3 văn phòng khác.
-function buildTcspExcel(wb, office, monthData, people, dates) {
+function buildTcspExcel(wb, office, monthData, people, dates, fromDate, toDate) {
   const rateInfo = buildThongSoSheet(wb, office);
-  const ltInfo = buildLichLamViecSheet(wb, office, monthData, people, dates, rateInfo);
-  buildBangLuongSheet(wb, office, people, dates, ltInfo);
-  buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo);
+  const ltInfo = buildLichLamViecSheet(wb, office, monthData, people, dates, rateInfo, fromDate, toDate);
+  buildBangLuongSheet(wb, office, people, dates, ltInfo, fromDate, toDate);
+  buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo, fromDate, toDate);
 }
 
 // Sheet "Thong so" — bảng lương cơ bản/phụ cấp ăn ca/thưởng theo Ca nửa (NS/NC) vs Ca Full (C1),
@@ -432,7 +432,7 @@ function buildThongSoSheet(wb, office) {
 // Sheet "Lich lam viec" — STT/Họ và tên/Chức danh + mỗi ngày là MÃ CA (F/NS/NC/N), đúng định dạng
 // "Lich lam viec" của file mẫu (khác "Lich thang" dùng cho 3 văn phòng kia, vốn ghi giờ dạng text).
 // Cột tổng hợp cuối (Số ca Full/Số ca nửa/Ngày nghỉ/Tổng thu nhập) đều là CÔNG THỨC.
-function buildLichLamViecSheet(wb, office, monthData, people, dates, rateInfo) {
+function buildLichLamViecSheet(wb, office, monthData, people, dates, rateInfo, fromDate, toDate) {
   const sheetName = 'Lich lam viec';
   const ws = wb.addWorksheet(sheetName);
   const dayCol0 = 4; // D
@@ -440,7 +440,7 @@ function buildLichLamViecSheet(wb, office, monthData, people, dates, rateInfo) {
   const halfCol = fullCol + 1, restCol = fullCol + 2, incomeCol = fullCol + 3;
   const dayColLetter0 = colToLetter(dayCol0), dayColLetter1 = colToLetter(dayCol0 + dates.length - 1);
 
-  ws.getCell(1, 1).value = `LỊCH LÀM VIỆC ${office.name.toUpperCase()} — ${periodLabel(dates)} (PA HYBRID)`;
+  ws.getCell(1, 1).value = `LỊCH LÀM VIỆC ${office.name.toUpperCase()} — ${periodLabel(fromDate, toDate)} (PA HYBRID)`;
   ws.getCell(1, 1).font = TS_TIT;
   ws.getCell(2, 1).value = `Mỗi ngày: ${office.numVehicles - 1} Full (C1) + 1 cặp nửa (NS/NC) + 1 nghỉ (N). `
     + `Sửa 1 ô ca ở đây thì Bảng lương và Chấm công tự cập nhật theo.`;
@@ -507,10 +507,10 @@ function buildLichLamViecSheet(wb, office, monthData, people, dates, rateInfo) {
 
 // Sheet "Bang luong" — mỗi dòng CÔNG THỨC tham chiếu thẳng sang "Lich lam viec", không tính lại —
 // sửa lịch thì bảng lương tự cập nhật theo, đúng cơ chế file mẫu.
-function buildBangLuongSheet(wb, office, people, dates, ltInfo) {
+function buildBangLuongSheet(wb, office, people, dates, ltInfo, fromDate, toDate) {
   const sheetName = 'Bang luong';
   const ws = wb.addWorksheet(sheetName);
-  ws.getCell(1, 1).value = `BẢNG LƯƠNG — ${office.name.toUpperCase()} — ${periodLabel(dates)}`;
+  ws.getCell(1, 1).value = `BẢNG LƯƠNG — ${office.name.toUpperCase()} — ${periodLabel(fromDate, toDate)}`;
   ws.getCell(1, 1).font = TS_TIT;
 
   const hdr = ['Họ và tên', 'Chức danh', 'Số ca Full', 'Số ca nửa', 'Ngày nghỉ', 'Tổng thu nhập (đ)'];
@@ -552,7 +552,7 @@ function tcsapaDayFormula(ltRef) {
   return `IF(${ltRef}="F","C1",IF(${ltRef}="N","",${ltRef}))`;
 }
 
-function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo) {
+function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo, fromDate, toDate) {
   const sheetName = 'Cham cong';
   const ws = wb.addWorksheet(sheetName);
   const ndays = dates.length;
@@ -571,7 +571,7 @@ function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo) 
   ndaysCell.value = ndays; ndaysCell.font = TNR9BG; ndaysCell.fill = fillOf(CC_LEGENDY); ndaysCell.alignment = CENW;
   ws.mergeCells(2, dayCol0, 2, lastCol);
   const legendCell = ws.getCell(2, dayCol0);
-  legendCell.value = `Kỳ chấm công: ${periodLabel(dates)} | Ký hiệu: C1 = ca Full (${office.shiftDefs.find(d => d.code === 'F').hours}) | `
+  legendCell.value = `Kỳ chấm công: ${periodLabel(fromDate, toDate)} | Ký hiệu: C1 = ca Full (${office.shiftDefs.find(d => d.code === 'F').hours}) | `
     + `NS = nửa ca Sáng (${office.shiftDefs.find(d => d.code === 'NS').hours}) | NC = nửa ca Chiều (${office.shiftDefs.find(d => d.code === 'NC').hours}) | `
     + `để trống = nghỉ | TV/HV/KL/C2/HC/T#/L# = mã nhập tay nếu cần (không tự sinh từ web) | `
     + `Cột ngày lấy tự động từ sheet "${ltInfo.sheetName}", sửa mã ca ở đó thì bảng này tự cập nhật, không cần xuất lại file.`;
@@ -585,7 +585,7 @@ function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo) 
   });
   ws.mergeCells(r0, dayCol0, r0, dayCol0 + ndays - 1);
   const hcell = ws.getCell(r0, dayCol0);
-  hcell.value = `NGÀY TRONG KỲ ${periodLabel(dates)}`;
+  hcell.value = `NGÀY TRONG KỲ ${periodLabel(fromDate, toDate)}`;
   hcell.font = TNR9BW; hcell.fill = fillOf(CC_BLUE); hcell.alignment = CENW; hcell.border = BORD;
   dates.forEach((d, i) => {
     const c = ws.getCell(r0 + 1, dayCol0 + i);

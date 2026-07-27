@@ -135,6 +135,12 @@ const OFFICES = [
       full: { base: 650000, an_ca: 60000, thuong: 100000 },
     },
     teams: [
+      // Trần Văn Tuân đã nghỉ việc — còn 7 người cho cycle 8 vị trí (5 Full+NS+NC+Nghỉ, vẫn giữ đủ 6
+      // xe). suggestWeekSchedule() (rotateBy:'day', code = cycle[(dayIdx+memberIdx+wIdx)%cycle.length])
+      // tự xử lý đúng trường hợp "số người ít hơn số vị trí trong cycle": mỗi ngày tự động THIẾU ĐÚNG
+      // 1 vị trí (xoay vòng qua các ngày/tuần, không cố định ai) — 1/8 số ngày thiếu đúng vị trí Nghỉ
+      // (đủ nguyên 6 xe, không ai nghỉ), 7/8 ngày còn lại thiếu 1 vị trí làm việc thật (có 1 người
+      // nghỉ, xe giảm tải tương ứng) — y hệt build_schedule_hybrid_short() bên xep_lich_lam_viec.py.
       { id: 'LAIXE', name: 'Lái xe', rotateBy: 'day', noOvertime: true,
         cycle: ['F', 'F', 'F', 'F', 'F', 'NS', 'NC', REST_CODE],
         people: [
@@ -145,7 +151,6 @@ const OFFICES = [
           { id: 'HK0304', name: 'Phạm Văn Toàn' },
           { id: 'HK0335', name: 'Nguyễn Việt Ngọc' },
           { id: 'MANHCHUAN', name: 'Mạnh Chuẩn' }, // chưa có mã NV chính thức (employee_info để trống)
-          { id: 'HK0369', name: 'Trần Văn Tuân' },
         ] },
     ],
   },
