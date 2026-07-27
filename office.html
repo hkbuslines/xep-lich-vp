@@ -56,11 +56,9 @@
 
   <section class="toolbar">
     <button id="regenBtn" class="btn ghost">↻ Tạo lại gợi ý</button>
-    <button id="saveBtn" class="btn primary">💾 Lưu lịch tuần</button>
-    <button id="confirmBtn" class="btn ghost">✅ Xác nhận kế hoạch</button>
+    <button id="saveBtn" class="btn primary">✅ Lưu &amp; xác nhận</button>
     <button id="exportBtn" class="btn ghost">📥 Xuất Excel tuần</button>
     <span id="statusText" class="status-text"></span>
-    <span id="confirmBadge" class="confirm-badge pending"></span>
   </section>
 
   <section class="toolbar">
@@ -74,7 +72,7 @@
       <input id="exportToDay" type="number" min="1" max="31" class="day-num-input">
     </label>
     <button id="exportMonthBtn" class="btn ghost">📊 Xuất Lịch + Chấm công</button>
-    <span class="hint" style="margin:0">Chỉ tuần đã "✅ Xác nhận kế hoạch" mới được tính — tuần chưa xác nhận sẽ để trống trong file.</span>
+    <span class="hint" style="margin:0">Chỉ tuần đã bấm "✅ Lưu & xác nhận" mới được tính — tuần chưa lưu (kể cả đang hiện gợi ý) sẽ để trống trong file.</span>
   </section>
 
   <section class="timeline-wrap">

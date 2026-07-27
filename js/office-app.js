@@ -15,8 +15,6 @@ const els = {
   weekPicker: document.getElementById('weekPicker'),
   regenBtn: document.getElementById('regenBtn'),
   saveBtn: document.getElementById('saveBtn'),
-  confirmBtn: document.getElementById('confirmBtn'),
-  confirmBadge: document.getElementById('confirmBadge'),
   exportBtn: document.getElementById('exportBtn'),
   exportMonth: document.getElementById('exportMonth'),
   exportFromDay: document.getElementById('exportFromDay'),
@@ -44,8 +42,6 @@ let state = {
   rosterUnsub: null,
   viewMode: 'day', // 'day' | 'week' — mặc định "Theo ngày" để tiện xếp/sửa hằng ngày
   dayIdx: 0,
-  confirmed: false, // tuần đang xem đã "Xác nhận kế hoạch" chưa — xem confirmWeek()
-  confirmedAt: null,
 };
 
 function qs() { return new URLSearchParams(location.search); }
@@ -323,23 +319,6 @@ async function loadWeek() {
   state.unsub = StorageAPI.subscribeWeek(state.office.id, weekId, (saved) => applyWeekSnapshot(saved));
 }
 
-// Trạng thái "Xác nhận kế hoạch" — hiện huy hiệu + đổi nhãn nút xác nhận. Chỉ đổi qua confirmWeek(),
-// KHÔNG tự đổi khi bấm "Lưu lịch tuần" bình thường (xem saveWeek()) — sửa 1 tuần đã xác nhận rồi lưu
-// thường vẫn giữ nguyên trạng thái xác nhận, tránh phải xác nhận lại vì những sửa nhỏ không cố ý.
-function updateConfirmUI() {
-  if (state.confirmed) {
-    els.confirmBtn.textContent = '↩ Bỏ xác nhận';
-    els.confirmBtn.className = 'btn confirmed';
-    els.confirmBadge.textContent = `✅ Đã xác nhận${state.confirmedAt ? ' lúc ' + new Date(state.confirmedAt).toLocaleString('vi-VN') : ''}`;
-    els.confirmBadge.className = 'confirm-badge confirmed';
-  } else {
-    els.confirmBtn.textContent = '✅ Xác nhận kế hoạch';
-    els.confirmBtn.className = 'btn ghost';
-    els.confirmBadge.textContent = 'Chưa xác nhận — sẽ để trống khi xuất Chấm công';
-    els.confirmBadge.className = 'confirm-badge pending';
-  }
-}
-
 function applyWeekSnapshot(saved) {
   if (state.dirty) {
     els.statusText.textContent = 'Có người khác vừa lưu bản mới — bấm Lưu để ghi đè bằng thay đổi của bạn, hoặc tải lại trang để xem bản mới nhất.';
@@ -348,36 +327,35 @@ function applyWeekSnapshot(saved) {
   }
   if (saved && saved.assignments) {
     state.schedule = normalizeSchedule(saved.assignments, state.office);
-    els.statusText.textContent = `Đã lưu lúc ${new Date(saved.updatedAt).toLocaleString('vi-VN')}${saved.updatedBy ? ' bởi ' + saved.updatedBy : ''}`;
+    els.statusText.textContent = `✅ Đã xác nhận lúc ${new Date(saved.updatedAt).toLocaleString('vi-VN')}${saved.updatedBy ? ' bởi ' + saved.updatedBy : ''}`;
     els.statusText.className = 'status-text';
-    state.confirmed = !!saved.confirmed;
-    state.confirmedAt = saved.confirmedAt || null;
   } else if (state.office.manualOnly) {
     state.schedule = blankWeekSchedule(state.office);
-    els.statusText.textContent = 'Chưa có lịch đã lưu — sheet đang để trống, tự xếp ca cho từng người rồi bấm Lưu để chốt.';
+    els.statusText.textContent = 'Chưa xác nhận — sheet đang để trống, tự xếp ca cho từng người rồi bấm Lưu & xác nhận.';
     els.statusText.className = 'status-text dirty';
-    state.confirmed = false; state.confirmedAt = null;
   } else {
     state.schedule = suggestWeekSchedule(state.office, state.monday);
-    els.statusText.textContent = 'Chưa có lịch đã lưu — đang hiện gợi ý tự động, bấm Lưu để chốt.';
+    els.statusText.textContent = 'Chưa xác nhận — đang hiện gợi ý tự động, bấm Lưu & xác nhận để chốt (chưa bấm thì Chấm công vẫn để trống tuần này).';
     els.statusText.className = 'status-text dirty';
-    state.confirmed = false; state.confirmedAt = null;
   }
   state.dirty = false;
-  updateConfirmUI();
   renderWeekLabel();
   renderView();
 }
 
+// "Lưu & xác nhận" gộp chung 2 việc làm 1 nút cho gọn: lưu bản hiện tại VÀ đánh dấu confirmed=true
+// luôn (xem computeRangeSchedule trong export-excel-month.js — chỉ lấy dữ liệu tuần nào
+// confirmed=true, tuần chưa từng lưu thì để TRỐNG dù đang hiện gợi ý tự động trên màn hình). Muốn
+// "bỏ xác nhận" 1 tuần đã lưu thì bấm "Xoá hết, xếp lại từ đầu" rồi lưu lại bản mới.
 async function saveWeek() {
   const weekId = isoDate(state.monday);
   els.saveBtn.disabled = true;
   const origLabel = els.saveBtn.textContent;
   els.saveBtn.textContent = 'Đang lưu…';
   try {
-    await StorageAPI.saveWeek(state.office.id, weekId, state.schedule, { confirmed: state.confirmed, confirmedAt: state.confirmedAt });
+    await StorageAPI.saveWeek(state.office.id, weekId, state.schedule, { confirmed: true, confirmedAt: new Date().toISOString() });
     state.dirty = false;
-    els.statusText.textContent = `Đã lưu lúc ${new Date().toLocaleString('vi-VN')}`;
+    els.statusText.textContent = `✅ Đã xác nhận lúc ${new Date().toLocaleString('vi-VN')}`;
     els.statusText.className = 'status-text';
   } catch (err) {
     console.error(err);
@@ -386,37 +364,6 @@ async function saveWeek() {
   } finally {
     els.saveBtn.disabled = false;
     els.saveBtn.textContent = origLabel;
-  }
-}
-
-// "Xác nhận kế hoạch" — chốt tuần đang xem để tính vào Chấm công khi xuất Excel (xem
-// computeRangeSchedule trong export-excel-month.js: chỉ lấy dữ liệu tuần nào confirmed=true, tuần
-// nào chưa xác nhận thì để TRỐNG dù đã có gợi ý/đã lưu tay). Lưu luôn bản hiện tại cùng lúc xác nhận,
-// để không có chuyện "đã xác nhận" nhưng dữ liệu trên màn hình chưa kịp lưu.
-async function confirmWeek() {
-  const willConfirm = !state.confirmed;
-  const msg = willConfirm
-    ? 'Xác nhận kế hoạch tuần này? Sẽ lưu lại bản hiện tại và tính vào lần xuất Chấm công tiếp theo.'
-    : 'Bỏ xác nhận tuần này? Lần xuất Chấm công tiếp theo sẽ để trống tuần này cho tới khi xác nhận lại.';
-  if (!confirm(msg)) return;
-  els.confirmBtn.disabled = true;
-  const origLabel = els.confirmBtn.textContent;
-  els.confirmBtn.textContent = 'Đang lưu…';
-  try {
-    const confirmedAt = willConfirm ? new Date().toISOString() : null;
-    await StorageAPI.saveWeek(state.office.id, isoDate(state.monday), state.schedule, { confirmed: willConfirm, confirmedAt });
-    state.confirmed = willConfirm;
-    state.confirmedAt = confirmedAt;
-    state.dirty = false;
-    updateConfirmUI();
-    els.statusText.textContent = `Đã lưu lúc ${new Date().toLocaleString('vi-VN')}`;
-    els.statusText.className = 'status-text';
-  } catch (err) {
-    console.error(err);
-    alert('Xác nhận thất bại: ' + err.message);
-  } finally {
-    els.confirmBtn.disabled = false;
-    if (els.confirmBtn.textContent === 'Đang lưu…') els.confirmBtn.textContent = origLabel;
   }
 }
 
@@ -505,7 +452,6 @@ function init() {
     renderView();
   });
   els.saveBtn.addEventListener('click', saveWeek);
-  els.confirmBtn.addEventListener('click', confirmWeek);
   els.exportBtn.addEventListener('click', async () => {
     els.exportBtn.disabled = true;
     els.exportBtn.textContent = 'Đang tạo file…';
