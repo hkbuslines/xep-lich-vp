@@ -23,7 +23,7 @@ body {
   background: var(--bg);
   color: var(--fg);
 }
-main { max-width: 1400px; margin: 0 auto; padding: 16px 20px 60px; }
+main { max-width: 1600px; margin: 0 auto; padding: 16px 20px 60px; }
 
 .topbar {
   display: flex; align-items: center; gap: 16px;
@@ -97,7 +97,11 @@ main { max-width: 1400px; margin: 0 auto; padding: 16px 20px 60px; }
 
 .tl-names-pane { flex-shrink: 0; width: 190px; }
 .tl-scroll-pane { flex: 1; min-width: 0; overflow-x: auto; }
-.tl-scroll-inner { min-width: 1300px; }
+/* 1300px (185px/ngày) cộng 190px cột tên (1490px) LỚN HƠN cả main lúc max-width rộng nhất (1600px -
+   40px padding = 1560px), nên tuần luôn bị hụt mất 1 ngày phải cuộn ngang mới thấy — kể cả màn hình
+   rất rộng, vì main có max-width cố định chứ không phải do màn hình hẹp. Giảm xuống 1050px (150px/
+   ngày, vẫn đủ hiện "HH:MM–HH:MM") để vừa trong main ở hầu hết màn hình laptop/desktop bình thường. */
+.tl-scroll-inner { min-width: 980px; }
 .tl-scroll-inner-day { min-width: 0; }
 
 .tl-header-cell { height: 40px; }
