@@ -135,15 +135,16 @@ const OFFICES = [
       full: { base: 650000, an_ca: 60000, thuong: 100000 },
     },
     teams: [
-      // Nguyễn Văn Đức đã nghỉ việc (Trần Văn Tuân vẫn ở lại) — còn 7 người cho cycle 8 vị trí (5
-      // Full+NS+NC+Nghỉ, vẫn giữ đủ 6 xe). suggestWeekSchedule() (rotateBy:'day', code =
-      // cycle[(dayIdx+memberIdx+wIdx)%cycle.length]) tự xử lý đúng trường hợp "số người ít hơn số vị
-      // trí trong cycle": mỗi ngày tự động THIẾU ĐÚNG 1 vị trí (xoay vòng qua các ngày/tuần, không cố
-      // định ai) — 1/8 số ngày thiếu đúng vị trí Nghỉ (đủ nguyên 6 xe, không ai nghỉ), 7/8 ngày còn
-      // lại thiếu 1 vị trí làm việc thật (có 1 người nghỉ, xe giảm tải tương ứng) — y hệt
-      // build_schedule_hybrid_short() bên xep_lich_lam_viec.py.
+      // Nguyễn Văn Đức đã nghỉ việc (Trần Văn Tuân vẫn ở lại) — còn 7 người, thiếu 1 so với biên chế
+      // chuẩn 8. Theo yêu cầu 27/07/2026 (chốt): PHẢI giữ đủ 6 xe MỌI NGÀY, không được thiếu — đổi lại
+      // chấp nhận KHÔNG ai có ngày nghỉ, quỹ lương tăng. Cycle chỉ còn 7 vị trí (5 Full + NS + NC,
+      // KHÔNG có "Nghỉ") — khớp đúng 7 người, mỗi ngày đủ nguyên 5 Full + 1 cặp nửa ca = đủ 6 xe tuyệt
+      // đối 100% số ngày, vai trò xoay vòng mỗi ngày để công bằng nhưng 0 người nghỉ — y hệt
+      // build_schedule_hybrid_short() bên xep_lich_lam_viec.py (đã sửa theo yêu cầu này).
+      // ⚠ VI PHẠM Điều 111 BLLĐ 2019 (tối thiểu 4 ngày nghỉ/tháng) — đã được xác nhận chấp nhận, không
+      // phải lỗi, nhưng công ty cần tự đánh giá rủi ro pháp lý/an toàn lao động (ca Full dài 17h30).
       { id: 'LAIXE', name: 'Lái xe', rotateBy: 'day', noOvertime: true,
-        cycle: ['F', 'F', 'F', 'F', 'F', 'NS', 'NC', REST_CODE],
+        cycle: ['F', 'F', 'F', 'F', 'F', 'NS', 'NC'],
         people: [
           { id: 'HK0471', name: 'Nguyễn Duy Đức' },
           { id: 'HK0392', name: 'Đồng Xuân Chinh' },
