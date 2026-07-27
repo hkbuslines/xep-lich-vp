@@ -55,9 +55,11 @@ function monthPersonList(office) {
 
 /**
  * Gộp dữ liệu lịch đã lưu theo TUẦN (Firestore) của mọi tuần phủ khoảng `dates` thành 1 lịch theo
- * NGÀY cho cả khoảng đó. Tuần nào chưa lưu thì dùng gợi ý tự động (suggestWeekSchedule) — giống hệt
- * những gì đang hiển thị trên web nếu tuần đó chưa ai chỉnh/lưu.
- * Trả về: { [personId]: { name, title, teamId, days: [code x N], ranges: [customRanges|null x N] } }
+ * NGÀY cho cả khoảng đó. CHỈ lấy tuần nào đã "✅ Xác nhận kế hoạch" (saved.confirmed === true) —
+ * tuần chưa xác nhận (kể cả đã lưu tay hoặc đang hiện gợi ý tự động trên web) thì để TRỐNG (Nghỉ),
+ * theo đúng yêu cầu: không xuất Chấm công dựa trên gợi ý máy, chỉ xuất phần đã người thật duyệt qua.
+ * Trả về: { schedule: {...}, unconfirmedWeeks: [Date thứ Hai, ...] } — unconfirmedWeeks để báo cho
+ * người dùng biết tuần nào bị bỏ trống trước khi xuất file.
  */
 async function computeRangeSchedule(office, dates) {
   const mondays = [];
@@ -69,11 +71,16 @@ async function computeRangeSchedule(office, dates) {
     cursor.setUTCDate(cursor.getUTCDate() + 7);
   }
   const weekSchedules = {};
+  const unconfirmedWeeks = [];
   for (const monday of mondays) {
     const wId = isoDate(monday);
     const saved = await StorageAPI.loadWeek(office.id, wId);
-    weekSchedules[wId] = (saved && saved.assignments) ? saved.assignments
-      : (office.manualOnly ? blankWeekSchedule(office) : suggestWeekSchedule(office, monday));
+    if (saved && saved.assignments && saved.confirmed) {
+      weekSchedules[wId] = saved.assignments;
+    } else {
+      weekSchedules[wId] = blankWeekSchedule(office);
+      unconfirmedWeeks.push(monday);
+    }
   }
   const result = {};
   for (const { id, name, title, team } of monthPersonList(office)) {
@@ -91,7 +98,7 @@ async function computeRangeSchedule(office, dates) {
     });
     result[id] = { name, title, teamId: team.id, days, ranges };
   }
-  return result;
+  return { schedule: result, unconfirmedWeeks };
 }
 
 // "HH:MM-HH:MM" (1 ca) hoặc "HH:MM-HH:MM, HH:MM-HH:MM" (ca gãy, tối đa 2 đoạn — công thức Cham cong
@@ -144,8 +151,24 @@ async function exportRangeExcel(office, fromDate, toDate) {
   const monthStart = new Date(Date.UTC(year, month - 1, 1));
   const monthEnd = new Date(Date.UTC(year, month, 0));
   const dates = rangeDates(monthStart, monthEnd);
-  const monthData = await computeRangeSchedule(office, dates);
+  const { schedule: monthData, unconfirmedWeeks } = await computeRangeSchedule(office, dates);
   const people = monthPersonList(office);
+
+  // Chỉ cảnh báo những tuần CHƯA xác nhận mà thực sự nằm trong [fromDate, toDate] đang chọn xuất —
+  // tuần ngoài khoảng đó vốn đã bị để trống bởi inRange() dù có xác nhận hay không, cảnh báo thêm chỉ
+  // gây nhiễu.
+  const relevantUnconfirmed = unconfirmedWeeks.filter(monday => {
+    const sunday = new Date(monday); sunday.setUTCDate(sunday.getUTCDate() + 6);
+    return monday <= toDate && sunday >= fromDate;
+  });
+  if (relevantUnconfirmed.length) {
+    const list = relevantUnconfirmed.map(m => {
+      const sun = new Date(m); sun.setUTCDate(sun.getUTCDate() + 6);
+      return `${fmtDDMM(m)}–${fmtDDMM(sun)}`;
+    }).join(', ');
+    const proceed = confirm(`Các tuần sau CHƯA "Xác nhận kế hoạch" nên sẽ để TRỐNG trong file: ${list}.\n\nVẫn tiếp tục xuất?`);
+    if (!proceed) return;
+  }
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Xếp Lịch VP';

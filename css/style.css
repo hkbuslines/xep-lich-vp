@@ -73,11 +73,15 @@ main { max-width: 1400px; margin: 0 auto; padding: 16px 20px 60px; }
 .btn:hover { border-color: var(--accent); }
 .btn.primary { background: var(--accent); color: white; border-color: var(--accent); font-weight: 600; }
 .btn.ghost { background: transparent; }
+.btn.confirmed { background: #2f9e44; color: white; border-color: #2f9e44; font-weight: 600; }
 
 .toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; flex-wrap: wrap; }
 .who-label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .status-text { font-size: 13px; color: var(--muted); }
 .status-text.dirty { color: #e8590c; font-weight: 600; }
+.confirm-badge { font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; }
+.confirm-badge.pending { color: #e8590c; background: color-mix(in srgb, #e8590c 12%, transparent); }
+.confirm-badge.confirmed { color: #2f9e44; background: color-mix(in srgb, #2f9e44 12%, transparent); }
 
 .date-sub { color: var(--muted); font-weight: 400; font-size: 11px; }
 .title-sub { color: var(--muted); font-weight: 400; font-size: 11px; }

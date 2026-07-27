@@ -69,6 +69,10 @@ const StorageAPI = (() => {
     return raw ? JSON.parse(raw) : null;
   }
 
+  // `meta.confirmed` — cờ "đã xác nhận kế hoạch" của tuần (xem confirmWeek() trong office-app.js).
+  // Nút "Lưu lịch tuần" bình thường PHẢI truyền lại đúng giá trị confirmed hiện có (không tự đổi) —
+  // vì .set() ghi đè NGUYÊN document, không truyền lại thì lưu thường sẽ vô tình xoá mất trạng thái
+  // đã xác nhận trước đó. Xuất Excel (computeRangeSchedule) chỉ lấy dữ liệu tuần nào confirmed=true.
   async function saveWeek(officeId, weekId, data, meta) {
     const payload = {
       officeId,
@@ -76,6 +80,8 @@ const StorageAPI = (() => {
       assignments: data,
       updatedAt: new Date().toISOString(),
       updatedBy: (meta && meta.updatedBy) || '',
+      confirmed: !!(meta && meta.confirmed),
+      confirmedAt: (meta && meta.confirmedAt) || null,
     };
     if (mode === 'firebase') {
       const firestorePayload = { ...payload, assignments: assignmentsToFirestore(data) };
