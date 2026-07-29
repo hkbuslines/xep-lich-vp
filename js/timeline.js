@@ -123,16 +123,18 @@ function buildBarEl(office, person, p, dayIdx, seg, opts, root) {
   bar.style.left = (s / 24 * 100) + '%';
   bar.style.width = (((e - s) / 24) * 100) + '%';
   const hmLabel = code === REST_CODE ? 'Nghỉ' : (fmtHM(s) + '–' + fmtHM(e));
-  const wide = (e - s) >= 4;
+  // Luôn gán chữ, kể cả thanh hẹp (vd ca gãy Điều phối trung chuyển 20:00-23:30 chỉ 3.5h) — trước đây
+  // dưới 4h thì để trống hẳn, thanh hiện ra trống trơn không có giờ gì cả; giờ .tl-bar-label đã tự cắt
+  // "…" khi tràn (xem CSS) nên cứ gán full text, thanh hẹp mấy cũng còn thấy được 1 phần thay vì trống.
   const label = document.createElement('span');
   label.className = 'tl-bar-label';
   bar.appendChild(label);
   if (carry) {
     bar.title = `${person.name} — ${def.name}: tiếp tục từ tối hôm trước đến ${fmtHM(e)} (đổi ca này ở ngày hôm trước)`;
-    label.textContent = wide ? '⋯' + fmtHM(e) : '';
+    label.textContent = '⋯' + fmtHM(e);
   } else {
     bar.title = `${person.name} — ${def.name} (${hmLabel})`;
-    label.textContent = wide ? hmLabel : (code === REST_CODE ? 'Nghỉ' : '');
+    label.textContent = hmLabel;
     if (opts.editable) {
       bar.draggable = true;
       bar.style.cursor = 'grab';
