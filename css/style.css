@@ -120,7 +120,10 @@ main { max-width: 1600px; margin: 0 auto; padding: 16px 20px 60px; }
   font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
 }
 
-.tl-person-row { height: 40px; display: flex; align-items: center; }
+/* Cao hơn 40px cũ (52px) để nhãn giờ trên thanh ca hẹp (vd ca gãy Điều phối trung chuyển 3.5h) có đủ
+   chỗ xuống 2 dòng thay vì bị cắt "…" hoàn toàn — áp dụng chung cả 2 tab (Theo ngày vốn đã đủ rộng để
+   hiện 1 dòng, cao hơn 1 chút không ảnh hưởng gì, chỉ đỡ phải tách riêng rule theo từng tab). */
+.tl-person-row { height: 52px; display: flex; align-items: center; }
 .tl-name-cell { padding-right: 10px; flex-direction: column; justify-content: center; align-items: flex-start; gap: 1px; }
 .tl-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -139,8 +142,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 16px 20px 60px; }
    .tl-bar sẽ cắt mất phần lấn ra đó, khiến nút xoá gần như không bấm trúng được. Chữ tràn khi thanh
    quá hẹp thì cắt riêng ở .tl-bar-label bên dưới. */
 .tl-bar-label {
-  pointer-events: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  max-width: 100%; min-width: 0;
+  pointer-events: none; overflow: hidden; white-space: normal; overflow-wrap: anywhere;
+  max-width: 100%; max-height: 100%; min-width: 0; text-align: center; line-height: 1.2;
 }
 .tl-bar-rest { background: color-mix(in srgb, var(--c) 30%, transparent); color: var(--c); }
 .tl-bar-carry { opacity: .45; font-size: 9.5px; cursor: default; }
