@@ -123,20 +123,20 @@ function buildBarEl(office, person, p, dayIdx, seg, opts, root) {
   bar.style.left = (s / 24 * 100) + '%';
   bar.style.width = (((e - s) / 24) * 100) + '%';
   const hmLabel = code === REST_CODE ? 'Nghỉ' : (fmtHM(s) + '–' + fmtHM(e));
-  // "HH:MM–HH:MM" (11 ký tự) xuống 2 dòng vẫn cần khoảng ~45-50px mới gọn — dưới đó (ca gãy như Điều
-  // phối trung chuyển 20:00-23:30 chỉ 3.5h ~21px) 2 dòng còn không đủ, chữ tràn xuống 3-4 dòng nhìn vỡ
-  // hình chứ không đẹp hơn để trống. Threshold 5h tương ứng đủ rộng để 2 dòng luôn gọn (đã test 8h/9h/
-  // 9.5h đều đẹp); dưới 5h thì để trống hẳn, đầy đủ giờ vẫn xem được qua tooltip khi rê chuột vào.
-  const showLabel = (e - s) >= 5;
+  // "HH:MM–HH:MM" (11 ký tự) xuống 2 dòng cần ~45-50px mới gọn — ca gãy ngắn như Điều phối trung
+  // chuyển 20:00-23:30 (3.5h ~21px) không đủ chỗ cho CẢ khung giờ dù xuống mấy dòng cũng vỡ hình. Thay
+  // vì để trống hẳn, hiện RIÊNG GIỜ BẮT ĐẦU (vd chỉ "20:00", 5 ký tự, ngắn hơn một nửa) — đủ chỗ xuống
+  // 2 dòng gọn ("20:" / "00") trong đúng khung 21px, đủ giờ chính xác vẫn xem qua tooltip khi rê chuột.
+  const fullFits = (e - s) >= 5; // đủ rộng cho CẢ khung "HH:MM–HH:MM"
   const label = document.createElement('span');
   label.className = 'tl-bar-label';
   bar.appendChild(label);
   if (carry) {
     bar.title = `${person.name} — ${def.name}: tiếp tục từ tối hôm trước đến ${fmtHM(e)} (đổi ca này ở ngày hôm trước)`;
-    label.textContent = showLabel ? '⋯' + fmtHM(e) : '';
+    label.textContent = fullFits ? '⋯' + fmtHM(e) : fmtHM(e);
   } else {
     bar.title = `${person.name} — ${def.name} (${hmLabel})`;
-    label.textContent = showLabel ? hmLabel : (code === REST_CODE ? 'Nghỉ' : '');
+    label.textContent = code === REST_CODE ? 'Nghỉ' : (fullFits ? hmLabel : fmtHM(s));
     if (opts.editable) {
       bar.draggable = true;
       bar.style.cursor = 'grab';
