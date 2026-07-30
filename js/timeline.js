@@ -48,6 +48,13 @@ const MIN_SEG_H = 0.5;
 function snapH(h) { return Math.round(h * (1 / SNAP_H)) / (1 / SNAP_H); }
 function clampH(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
+// Ca >=5h thì thanh ở tab "Theo tuần" đủ rộng để hiện gọn "HH:MM–HH:MM" (2 dòng, xem CSS .tl-bar-label)
+// — ca ngắn hơn (như ca gãy Điều phối trung chuyển 3.5h) không đủ chỗ dù thử đủ cách (để trống/chỉ
+// giờ đầu/xoay dọc đều không ổn), nên KHÔNG hiện chữ trong ô nữa — đủ giờ xem ở dòng chú thích riêng
+// dưới mỗi người (buildNarrowCaption) hoặc tooltip khi rê chuột. Dùng chung giữa buildBarEl và
+// renderTimeline nên tách hàm riêng thay vì lặp lại điều kiện.
+function isFullFitBar(s, e) { return (e - s) >= 5; }
+
 // customRanges (person.ranges[dayIdx]) ghi đè khung giờ mặc định của mã ca nếu người dùng đã
 // kéo-giãn/di chuyển/thêm/xoá giờ ở tab "Theo ngày". null/undefined -> dùng giờ mặc định của code.
 function effectiveRanges(office, code, customRanges) {
@@ -123,20 +130,20 @@ function buildBarEl(office, person, p, dayIdx, seg, opts, root) {
   bar.style.left = (s / 24 * 100) + '%';
   bar.style.width = (((e - s) / 24) * 100) + '%';
   const hmLabel = code === REST_CODE ? 'Nghỉ' : (fmtHM(s) + '–' + fmtHM(e));
-  // "HH:MM–HH:MM" (11 ký tự) xuống 2 dòng cần ~45-50px mới gọn — ca gãy ngắn như Điều phối trung
-  // chuyển 20:00-23:30 (3.5h ~21px) không đủ chỗ cho CẢ khung giờ dù xuống mấy dòng cũng vỡ hình. Thay
-  // vì để trống hẳn, hiện RIÊNG GIỜ BẮT ĐẦU (vd chỉ "20:00", 5 ký tự, ngắn hơn một nửa) — đủ chỗ xuống
-  // 2 dòng gọn ("20:" / "00") trong đúng khung 21px, đủ giờ chính xác vẫn xem qua tooltip khi rê chuột.
-  const fullFits = (e - s) >= 5; // đủ rộng cho CẢ khung "HH:MM–HH:MM"
+  // "HH:MM–HH:MM" (11 ký tự) xuống 2 dòng cần ~45-50px mới gọn — đã thử để trống/chỉ giờ bắt đầu/xoay
+  // dọc cho ca hẹp (ca gãy <5h, vd Điều phối trung chuyển 20:00-23:30 ~21px) đều không ổn (vẫn thiếu
+  // chữ hoặc nhìn không đẹp). Bỏ hẳn việc nhét chữ vào ô hẹp — để trống thanh, đủ giờ hiện đầy đủ ở
+  // dòng chú thích riêng dưới mỗi người (xem buildNarrowCaption trong renderTimeline).
+  const fullFits = isFullFitBar(s, e);
   const label = document.createElement('span');
   label.className = 'tl-bar-label';
   bar.appendChild(label);
   if (carry) {
     bar.title = `${person.name} — ${def.name}: tiếp tục từ tối hôm trước đến ${fmtHM(e)} (đổi ca này ở ngày hôm trước)`;
-    label.textContent = fullFits ? '⋯' + fmtHM(e) : fmtHM(e);
+    label.textContent = fullFits ? '⋯' + fmtHM(e) : '';
   } else {
     bar.title = `${person.name} — ${def.name} (${hmLabel})`;
-    label.textContent = code === REST_CODE ? 'Nghỉ' : (fullFits ? hmLabel : fmtHM(s));
+    label.textContent = fullFits ? hmLabel : (code === REST_CODE ? 'Nghỉ' : '');
     if (opts.editable) {
       bar.draggable = true;
       bar.style.cursor = 'grab';
@@ -163,6 +170,24 @@ function buildBarEl(office, person, p, dayIdx, seg, opts, root) {
  * opts.onChange(personId, dayIdx, newCode): gọi khi người dùng đổi ca qua menu.
  * opts.onSwap(personA, dayA, personB, dayB): gọi khi người dùng kéo-thả đổi chỗ 2 ca.
  */
+// Dòng chú thích nhỏ dưới mỗi người, liệt kê đủ giờ CHÍNH XÁC cho những ca quá hẹp không hiện được
+// chữ ngay trong thanh (xem isFullFitBar trong buildBarEl) — vd "T6 20:00–23:30" cho ca gãy Điều phối
+// trung chuyển. Trả về null nếu tuần đó người này không có ca nào bị hẹp (đỡ chiếm chỗ vô ích).
+function buildNarrowCaption(daySegs) {
+  const parts = [];
+  daySegs.forEach((segs, dayIdx) => {
+    segs.forEach(seg => {
+      if (seg.carry || seg.code === REST_CODE || isFullFitBar(seg.s, seg.e)) return;
+      parts.push(`${TL_WEEKDAY[dayIdx]} ${fmtHM(seg.s)}–${fmtHM(seg.e)}`);
+    });
+  });
+  if (!parts.length) return null;
+  const caption = document.createElement('div');
+  caption.className = 'tl-narrow-caption';
+  caption.textContent = parts.join(' · ');
+  return caption;
+}
+
 function renderTimeline(root, office, schedule, dates, opts) {
   opts = opts || {};
   root.innerHTML = '';
@@ -227,8 +252,10 @@ function renderTimeline(root, office, schedule, dates, opts) {
       nameCell.innerHTML = `<div class="tl-name">${person.name}</div>${person.title ? `<div class="title-sub">${person.title}</div>` : ''}`;
       namesPane.appendChild(nameCell);
 
+      const trackWrap = document.createElement('div');
+      trackWrap.className = 'tl-person-row tl-track-wrap';
       const track = document.createElement('div');
-      track.className = 'tl-person-row tl-track';
+      track.className = 'tl-track';
       const daySegs = buildDaySegments(office, person);
       daySegs.forEach((segs, dayIdx) => {
         const dayCell = document.createElement('div');
@@ -247,7 +274,10 @@ function renderTimeline(root, office, schedule, dates, opts) {
         }
         track.appendChild(dayCell);
       });
-      scrollInner.appendChild(track);
+      trackWrap.appendChild(track);
+      const caption = buildNarrowCaption(daySegs);
+      if (caption) trackWrap.appendChild(caption);
+      scrollInner.appendChild(trackWrap);
     }
   }
 
