@@ -120,24 +120,13 @@ main { max-width: 1600px; margin: 0 auto; padding: 16px 20px 60px; }
   font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
 }
 
-/* 68px (từ 40px gốc): 52px cho track + 16px cho dòng chú thích ca hẹp bên dưới (.tl-narrow-caption) —
-   áp dụng chung cả 2 tab (Theo ngày vốn không có chú thích, cao hơn 1 chút không ảnh hưởng gì, chỉ đỡ
-   phải tách riêng rule theo từng tab). */
-.tl-person-row { height: 68px; display: flex; align-items: center; }
+.tl-person-row { height: 40px; display: flex; align-items: center; }
 .tl-name-cell { padding-right: 10px; flex-direction: column; justify-content: center; align-items: flex-start; gap: 1px; }
 .tl-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* .tl-track-wrap = phần tử mang class .tl-person-row thật sự ở tab Theo tuần (cột dọc: track cố định
-   52px + chú thích bên dưới) — .tl-track bên trong chỉ còn lo phần thanh ca, không tự làm person-row
-   nữa (khác bản cũ), để chừa chỗ cho .tl-narrow-caption mà không phá layout 2 khối tên/lịch. */
-.tl-track-wrap { width: 100%; display: flex; flex-direction: column; }
 /* KHÔNG overflow:hidden ở đây — cùng lý do với .tl-bar phía dưới: ca bắt đầu đúng 0h hoặc kết
    thúc đúng 24h thì nút xoá/tay kéo của nó nằm sát mép track, overflow:hidden sẽ cắt mất luôn. */
-.tl-track { width: 100%; height: 52px; flex-shrink: 0; border-radius: 6px; background: var(--card); display: flex; }
-.tl-narrow-caption {
-  font-size: 9px; color: var(--muted); padding: 2px 6px 0; line-height: 1.3;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
+.tl-track { width: 100%; border-radius: 6px; background: var(--card); display: flex; }
 .tl-day-cell { position: relative; flex: 1; height: 100%; border-left: 1px solid var(--border); }
 .tl-day-cell:first-child { border-left: none; }
 .tl-bar {
@@ -150,8 +139,8 @@ main { max-width: 1600px; margin: 0 auto; padding: 16px 20px 60px; }
    .tl-bar sẽ cắt mất phần lấn ra đó, khiến nút xoá gần như không bấm trúng được. Chữ tràn khi thanh
    quá hẹp thì cắt riêng ở .tl-bar-label bên dưới. */
 .tl-bar-label {
-  pointer-events: none; overflow: hidden; white-space: normal; overflow-wrap: anywhere;
-  max-width: 100%; max-height: 100%; min-width: 0; text-align: center; line-height: 1.2;
+  pointer-events: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 100%; min-width: 0;
 }
 .tl-bar-rest { background: color-mix(in srgb, var(--c) 30%, transparent); color: var(--c); }
 .tl-bar-carry { opacity: .45; font-size: 9.5px; cursor: default; }
