@@ -512,8 +512,15 @@ function buildBangLuongSheet(wb, office, people, dates, ltInfo, fromDate, toDate
   const ws = wb.addWorksheet(sheetName);
   ws.getCell(1, 1).value = `BẢNG LƯƠNG — ${office.name.toUpperCase()} — ${periodLabel(fromDate, toDate)}`;
   ws.getCell(1, 1).font = TS_TIT;
+  ws.getCell(2, 1).value = `Giờ TC đêm lấy tự động từ sheet "Cham cong" (dòng "↳ Tăng ca đêm (giờ)", chấm tay) `
+    + `× ${office.rates.night_ot.toLocaleString('vi-VN')}đ/giờ — điền số giờ bên đó thì cột này tự cập nhật.`;
+  ws.getCell(2, 1).font = TS_SUB;
 
-  const hdr = ['Họ và tên', 'Chức danh', 'Số ca Full', 'Số ca nửa', 'Ngày nghỉ', 'Tổng thu nhập (đ)'];
+  // Layout sheet "Cham cong" (được tạo SAU trong buildTcspExcel) — xem ghi chú tại tcspChamCongLayout().
+  const ccLayout = tcspChamCongLayout(dates.length);
+  const nightOtRef = (ccRow) => `'Cham cong'!${colToLetter(ccLayout.nightOtCol)}${ccRow}`;
+
+  const hdr = ['Họ và tên', 'Chức danh', 'Số ca Full', 'Số ca nửa', 'Ngày nghỉ', 'Giờ TC đêm', 'Tiền TC đêm (đ)', 'Tổng thu nhập (đ)'];
   hdr.forEach((label, j) => {
     const c = ws.getCell(3, j + 1);
     c.value = label; c.fill = fillOf(TS_HDR_ARGB); c.font = TS_HF; c.alignment = CENW; c.border = BORD;
@@ -523,23 +530,27 @@ function buildBangLuongSheet(wb, office, people, dates, ltInfo, fromDate, toDate
   people.forEach((p, idx) => {
     const row = 4 + idx;
     const lichRow = ltInfo.dataStartRow + idx;
+    const ccRow = ccLayout.dataStartRow + idx * ccLayout.rowStep;
     ws.getCell(row, 1).value = { formula: ref(2, lichRow) };
     ws.getCell(row, 2).value = { formula: ref(3, lichRow) };
     ws.getCell(row, 3).value = { formula: ref(ltInfo.fullCol, lichRow) };
     ws.getCell(row, 4).value = { formula: ref(ltInfo.halfCol, lichRow) };
     ws.getCell(row, 5).value = { formula: ref(ltInfo.restCol, lichRow) };
-    ws.getCell(row, 6).value = { formula: ref(ltInfo.incomeCol, lichRow) };
-    for (let c = 1; c <= 6; c++) ws.getCell(row, c).border = BORD;
+    ws.getCell(row, 6).value = { formula: nightOtRef(ccRow) };
+    ws.getCell(row, 7).value = { formula: `F${row}*${office.rates.night_ot}` };
+    ws.getCell(row, 8).value = { formula: `${ref(ltInfo.incomeCol, lichRow)}+G${row}` };
+    for (let c = 1; c <= 8; c++) ws.getCell(row, c).border = BORD;
   });
 
   const rTot = 4 + people.length;
   ws.getCell(rTot, 1).value = 'TỔNG CỘNG'; ws.getCell(rTot, 1).border = BORD;
-  ws.getCell(rTot, 6).value = { formula: `SUM(F4:F${rTot - 1})` }; ws.getCell(rTot, 6).border = BORD;
+  ws.getCell(rTot, 8).value = { formula: `SUM(H4:H${rTot - 1})` }; ws.getCell(rTot, 8).border = BORD;
   ws.getCell(rTot + 1, 1).value = 'Thu nhập bình quân/người (đ):';
-  ws.getCell(rTot + 1, 6).value = { formula: `F${rTot}/${people.length}` };
+  ws.getCell(rTot + 1, 8).value = { formula: `H${rTot}/${people.length}` };
 
   ws.getColumn(1).width = 20; ws.getColumn(2).width = 20; ws.getColumn(3).width = 12;
-  ws.getColumn(4).width = 12; ws.getColumn(5).width = 12; ws.getColumn(6).width = 20;
+  ws.getColumn(4).width = 12; ws.getColumn(5).width = 12; ws.getColumn(6).width = 12;
+  ws.getColumn(7).width = 16; ws.getColumn(8).width = 20;
 }
 
 // Sheet "Cham cong" RIÊNG cho Lái Xe Trung Chuyển Sapa (tcsp) — bố cục/cột/công thức lấy đúng theo
@@ -552,13 +563,24 @@ function tcsapaDayFormula(ltRef) {
   return `IF(${ltRef}="F","C1",IF(${ltRef}="N","",${ltRef}))`;
 }
 
+// Toạ độ cố định của sheet "Cham cong" (TCSP) — dùng chung giữa buildBangLuongSheet (cần tham chiếu
+// SANG sheet này để tính tiền tăng ca đêm, dù "Cham cong" được tạo SAU trong thứ tự gọi hàm — không
+// sao, ExcelJS chỉ ghi công thức dạng text, Excel tự resolve khi mở file, không quan tâm thứ tự tạo
+// sheet) và buildChamCongTcSapaSheet (nơi layout này thực sự được dựng). Mỗi người chiếm 3 dòng: dòng
+// chính (mã ca) + "↳ Tăng ca (giờ/ngày)" (100%, chấm tay) + "↳ Tăng ca đêm (giờ)" (chấm tay).
+function tcspChamCongLayout(ndays) {
+  const dayCol0 = 5; // E
+  const offCC = dayCol0 + ndays; // cột đầu nhóm tổng hợp bên phải (Công chính thức...)
+  const dataStartRow = 7; // r0(4, dòng tiêu đề) + 2 (dòng "TC SAPA") + 1
+  return { dayCol0, offCC, dataStartRow, rowStep: 3, nightOtCol: offCC + 9 };
+}
+
 function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo, fromDate, toDate) {
   const sheetName = 'Cham cong';
   const ws = wb.addWorksheet(sheetName);
   const ndays = dates.length;
-  const dayCol0 = 5; // E
-  const offCC = dayCol0 + ndays;
-  const lastCol = offCC + 10;
+  const { dayCol0, offCC, nightOtCol } = tcspChamCongLayout(ndays);
+  const lastCol = offCC + 11;
   const dayColLetter0 = colToLetter(dayCol0), dayColLetter1 = colToLetter(dayCol0 + ndays - 1);
 
   ws.mergeCells(1, 1, 1, lastCol); // hàng băng rôn để trống, đúng file thật (không có tiêu đề)
@@ -574,7 +596,8 @@ function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo, 
   legendCell.value = `Kỳ chấm công: ${periodLabel(fromDate, toDate)} | Ký hiệu: C1 = ca Full (${office.shiftDefs.find(d => d.code === 'F').hours}) | `
     + `NS = nửa ca Sáng (${office.shiftDefs.find(d => d.code === 'NS').hours}) | NC = nửa ca Chiều (${office.shiftDefs.find(d => d.code === 'NC').hours}) | `
     + `để trống = nghỉ | TV/HV/KL/C2/HC/T#/L# = mã nhập tay nếu cần (không tự sinh từ web) | `
-    + `Cột ngày lấy tự động từ sheet "${ltInfo.sheetName}", sửa mã ca ở đó thì bảng này tự cập nhật, không cần xuất lại file.`;
+    + `Cột ngày lấy tự động từ sheet "${ltInfo.sheetName}", sửa mã ca ở đó thì bảng này tự cập nhật, không cần xuất lại file | `
+    + `Tăng ca đêm CHẤM TAY ở dòng "↳ Tăng ca đêm (giờ)" dưới mỗi người, ${office.rates.night_ot.toLocaleString('vi-VN')}đ/giờ (xem sheet "Bang luong").`;
   legendCell.font = TNR9; legendCell.fill = fillOf(CC_LEGENDY); legendCell.alignment = LEFTW;
 
   const r0 = 4;
@@ -593,14 +616,14 @@ function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo, 
     c.font = TNR9BW; c.fill = fillOf(CC_BLUE); c.alignment = CENW; c.border = BORD;
   });
   const g1Labels = ['Công chính thức', 'Công Thử việc', 'Công Học việc', 'Công C1', 'Công C2', 'Công NS', 'Công NC'];
-  const g2Labels = ['Giờ tăng ca \n(100%)', 'Giờ tăng ca \n(200%)'];
+  const g2Labels = ['Giờ tăng ca \n(100%)', 'Giờ tăng ca \n(200%)', 'Giờ tăng\nca đêm'];
   const g3Labels = ['Nghỉ KL', 'Ngày vào'];
   ws.mergeCells(r0, offCC, r0, offCC + 6);
   ws.getCell(r0, offCC).value = 'Tổng\n ngày\n công';
-  ws.mergeCells(r0, offCC + 7, r0, offCC + 8);
+  ws.mergeCells(r0, offCC + 7, r0, offCC + 9);
   ws.getCell(r0, offCC + 7).value = 'Làm thêm giờ';
-  ws.mergeCells(r0, offCC + 9, r0, offCC + 10);
-  ws.getCell(r0, offCC + 9).value = 'Thông tin cá nhân';
+  ws.mergeCells(r0, offCC + 10, r0, offCC + 11);
+  ws.getCell(r0, offCC + 10).value = 'Thông tin cá nhân';
   [...g1Labels, ...g2Labels, ...g3Labels].forEach((lbl, k) => { ws.getCell(r0 + 1, offCC + k).value = lbl; });
   for (let col = dayCol0; col <= lastCol; col++) {
     for (const row of [r0, r0 + 1]) {
@@ -634,7 +657,7 @@ function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo, 
     const ltRow = ltInfo.dataStartRow + idx;
     const isFirst = idx === 0;
     const sttCell = ws.getCell(row, 1);
-    sttCell.value = isFirst ? 1 : { formula: `1+A${row - 2}` };
+    sttCell.value = isFirst ? 1 : { formula: `1+A${row - 3}` };
     ws.getCell(row, 2).value = p.id === 'MANHCHUAN' ? '' : p.id;
     ws.getCell(row, 3).value = p.name;
     ws.getCell(row, 4).value = p.title || 'Lái xe TC Sapa';
@@ -657,24 +680,35 @@ function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo, 
       c.value = { formula: f }; c.font = TNR9B; c.alignment = CENW; c.border = BORD;
     });
     const otRow = row + 1;
+    const nightRow = row + 2;
     const otRng = `${dayColLetter0}${otRow}:${dayColLetter1}${otRow}`;
     const c100 = ws.getCell(row, offCC + 7);
     c100.value = { formula: `SUM(${otRng})` }; c100.font = TNR9B; c100.alignment = CENW; c100.border = BORD;
     const c200 = ws.getCell(row, offCC + 8);
     c200.value = { formula: g2FormulaOT200(rng) }; c200.font = TNR9B; c200.alignment = CENW; c200.border = BORD;
-    const cKL = ws.getCell(row, offCC + 9);
+    const nightRng = `${dayColLetter0}${nightRow}:${dayColLetter1}${nightRow}`;
+    const cDem = ws.getCell(row, nightOtCol);
+    cDem.value = { formula: `SUM(${nightRng})` }; cDem.font = TNR9B; cDem.alignment = CENW; cDem.border = BORD;
+    const cKL = ws.getCell(row, offCC + 10);
     cKL.value = { formula: `COUNTIF(${rng},"KL")+(COUNTIF(${rng},"0.5KL")/2)` }; cKL.font = TNR9B; cKL.alignment = CENW; cKL.border = BORD;
-    ws.getCell(row, offCC + 10).border = BORD; // Ngày vào — nhập tay
+    ws.getCell(row, offCC + 11).border = BORD; // Ngày vào — nhập tay
 
     // dòng "↳ Tăng ca (giờ/ngày)" — để trống, nhập tay số giờ tăng ca 100% mỗi ngày (T#) hoặc mã L# cho 200%
     ws.getCell(otRow, 4).value = '   ↳ Tăng ca (giờ/ngày)';
     ws.getCell(otRow, 4).font = TNR8G;
-    for (let col = 1; col <= lastCol; col++) {
-      const c = ws.getCell(otRow, col); c.fill = fillOf(CC_GRAY); c.font = TNR8G; c.border = BORD;
+    // dòng "↳ Tăng ca đêm (giờ)" — để trống, nhập tay số giờ tăng ca đêm mỗi ngày (luôn chấm tay, không
+    // có ca đêm trong offices-data.js để xoay tự động) — Bang luong tự tính tiền theo office.rates.night_ot.
+    ws.getCell(nightRow, 4).value = '   ↳ Tăng ca đêm (giờ)';
+    ws.getCell(nightRow, 4).font = TNR8G;
+    for (const r of [otRow, nightRow]) {
+      for (let col = 1; col <= lastCol; col++) {
+        const c = ws.getCell(r, col); c.fill = fillOf(CC_GRAY); c.font = TNR8G; c.border = BORD;
+      }
     }
     ws.getRow(row).height = 22.25;
     ws.getRow(otRow).height = 14;
-    row += 2;
+    ws.getRow(nightRow).height = 14;
+    row += 3;
   });
 
   row += 1;
@@ -706,8 +740,8 @@ function buildChamCongTcSapaSheet(wb, office, monthData, people, dates, ltInfo, 
   ws.getColumn(1).width = 5.5; ws.getColumn(2).width = 14.5; ws.getColumn(3).width = 18; ws.getColumn(4).width = 20.5;
   for (let i = 0; i < ndays; i++) ws.getColumn(dayCol0 + i).width = 7;
   for (let k = 0; k < 7; k++) ws.getColumn(offCC + k).width = 9;
-  ws.getColumn(offCC + 7).width = 9; ws.getColumn(offCC + 8).width = 9;
-  ws.getColumn(offCC + 9).width = 9; ws.getColumn(offCC + 10).width = 10;
+  ws.getColumn(offCC + 7).width = 9; ws.getColumn(offCC + 8).width = 9; ws.getColumn(offCC + 9).width = 9;
+  ws.getColumn(offCC + 10).width = 9; ws.getColumn(offCC + 11).width = 10;
   ws.views = [{ state: 'frozen', xSplit: 4, ySplit: r0c }];
 }
 

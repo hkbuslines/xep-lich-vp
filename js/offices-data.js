@@ -130,9 +130,13 @@ const OFFICES = [
     ],
     // Khớp đúng lich_lam_viec_config.json 'rates' — dùng chung cho sheet "Thong so" và bảng "Ký hiệu"
     // trong Cham cong khi xuất Excel, tránh lặp số liệu 2 nơi.
+    // night_ot: đơn giá tăng ca đêm (đ/giờ) — khớp đúng file thật "Chấm công TC Sapa - Tháng
+    // 07.2026.xlsx" (sheet "Bảng lương", cột "Giờ TC đêm"). Giờ tăng ca đêm luôn CHẤM TAY (không xoay
+    // ca tự động), nên chỉ dùng đơn giá này để TÍNH TIỀN trong sheet "Bang luong" khi xuất Excel.
     rates: {
       half: { base: 450000, an_ca: 40000, thuong: 0 },
       full: { base: 650000, an_ca: 60000, thuong: 100000 },
+      night_ot: 75000,
     },
     teams: [
       // Nguyễn Văn Đức đã nghỉ việc (Trần Văn Tuân vẫn ở lại) — còn 7 người, thiếu 1 so với biên chế
