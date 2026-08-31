@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yêu cầu lái xe</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #e2e5ea;
+    --accent: #2563eb;
+    --accent-dark: #1d4ed8;
+    --danger: #dc2626;
+    --danger-dark: #b91c1c;
+    --ok: #16a34a;
+    --warn: #b45309;
+    --warn-bg: #fef3c7;
+    --ok-bg: #dcfce7;
+    --danger-bg: #fee2e2;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  .layout { display: flex; gap: 24px; align-items: flex-start; }
+  .form-col { flex: 0 0 380px; }
+  .list-col { flex: 1 1 auto; min-width: 0; }
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    .form-col { flex: 1 1 auto; width: 100%; }
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+  .field { margin-bottom: 16px; }
+  input[type=text], input[type=date], select, textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    background: #fff;
+    color: var(--text);
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+  }
+  textarea { resize: vertical; min-height: 90px; }
+  button[type=submit] {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button[type=submit]:hover { background: var(--accent-dark); }
+  button[type=submit]:disabled { opacity: 0.6; cursor: not-allowed; }
+  .status { margin-top: 12px; font-size: 14px; display: none; }
+  .status.ok { color: var(--ok); display: block; }
+  .status.err { color: var(--danger); display: block; }
+  .list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+  .list-header h2 { font-size: 16px; margin: 0; }
+  .filter-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filter-row .field { margin-bottom: 0; }
+  .filter-row .field label { margin-bottom: 4px; }
+  .filter-row select, .filter-row input[type=date] { width: auto; }
+  .refresh-btn, .clear-filter-btn {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font-size: 13px; cursor: pointer; color: var(--text);
+  }
+  .refresh-btn:hover, .clear-filter-btn:hover { background: #f0f1f3; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; word-wrap: break-word; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  col.col-ngay { width: 88px; }
+  col.col-ten { width: 130px; }
+  col.col-loai { width: 140px; }
+  col.col-trangthai { width: 110px; }
+  col.col-action { width: 150px; }
+  .empty, .loading { color: var(--muted); font-size: 13px; padding: 8px 0; }
+  .table-scroll { overflow-x: auto; }
+  .config-warning {
+    background: #fef3c7; border: 1px solid #fbbf24; color: #92400e;
+    padding: 12px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 20px;
+  }
+  .badge {
+    display: inline-block; padding: 3px 8px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .badge-cho { background: var(--warn-bg); color: var(--warn); }
+  .badge-duyet { background: var(--ok-bg); color: var(--ok); }
+  .badge-tuchoi { background: var(--danger-bg); color: var(--danger); }
+  .ghichu-note { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .action-btns button {
+    border: 1px solid var(--border); border-radius: 6px; background: #fff;
+    padding: 4px 8px; font-size: 12px; cursor: pointer;
+  }
+  .btn-duyet { color: var(--ok); border-color: #bbf7d0; }
+  .btn-duyet:hover { background: var(--ok-bg); }
+  .btn-tuchoi { color: var(--danger); border-color: #fecaca; }
+  .btn-tuchoi:hover { background: var(--danger-bg); }
+  .btn-lai { color: var(--muted); }
+  .btn-lai:hover { background: #f0f1f3; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Yêu cầu lái xe</h1>
+  <div class="subtitle">Ghi lại yêu cầu, đề xuất của lái xe (xin nghỉ, đổi ca, xin xe, ứng lương...), đồng bộ trực tiếp về Google Sheet.</div>
+
+  <div id="configWarning" class="config-warning" style="display:none;">
+    Chưa cấu hình WEB_APP_URL trong file này. Mở index.html, sửa hằng số
+    <code>WEB_APP_URL</code> ở cuối file thành URL Web App Apps Script của bạn (xem hướng dẫn trong Code.gs).
+  </div>
+
+  <div class="layout">
+    <div class="form-col">
+      <div class="card">
+        <form id="reqForm">
+          <div class="field">
+            <label for="ngay">Ngày</label>
+            <input type="date" id="ngay" name="ngay" required>
+          </div>
+
+          <div class="field">
+            <label for="ten">Tên lái xe</label>
+            <input type="text" id="ten" name="ten" placeholder="Họ tên lái xe" required>
+          </div>
+
+          <div class="field">
+            <label for="loaiYeuCau">Loại yêu cầu</label>
+            <input type="text" id="loaiYeuCau" name="loaiYeuCau" placeholder="VD: Xin nghỉ phép, Đổi ca, Xin xe, Ứng lương..." required>
+          </div>
+
+          <div class="field">
+            <label for="noiDung">Nội dung yêu cầu</label>
+            <textarea id="noiDung" name="noiDung" placeholder="Mô tả cụ thể lái xe muốn gì..." required></textarea>
+          </div>
+
+          <button type="submit" id="submitBtn">Gửi yêu cầu</button>
+          <div id="status" class="status"></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="list-col">
+      <div class="card">
+        <div class="list-header">
+          <h2>Danh sách yêu cầu</h2>
+          <button type="button" class="refresh-btn" id="refreshBtn">Làm mới</button>
+        </div>
+        <div class="filter-row">
+          <div class="field">
+            <label for="tuNgay">Từ ngày</label>
+            <input type="date" id="tuNgay">
+          </div>
+          <div class="field">
+            <label for="denNgay">Đến ngày</label>
+            <input type="date" id="denNgay">
+          </div>
+          <div class="field">
+            <label for="locTrangThai">Trạng thái</label>
+            <select id="locTrangThai">
+              <option value="">Tất cả</option>
+              <option value="Chờ duyệt">Chờ duyệt</option>
+              <option value="Đã duyệt">Đã duyệt</option>
+              <option value="Từ chối">Từ chối</option>
+            </select>
+          </div>
+          <button type="button" class="clear-filter-btn" id="clearFilterBtn">Xóa lọc</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <colgroup>
+              <col class="col-ngay"><col class="col-ten"><col class="col-loai">
+              <col><col class="col-trangthai"><col class="col-action">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Ngày</th>
+                <th>Tên lái xe</th>
+                <th>Loại yêu cầu</th>
+                <th>Nội dung</th>
+                <th>Trạng thái</th>
+                <th>Xử lý</th>
+              </tr>
+            </thead>
+            <tbody id="reqBody">
+              <tr><td colspan="6" class="loading">Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Dán URL Web App Apps Script của bạn vào đây (xem hướng dẫn trong Code.gs).
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz0oyBbNRD7L5rJr9wp6DeFwvma9uOUcIa2-fE8x7bXR3K4Tb-Idw3HB6cz-6tTexma/exec";
+
+  const form = document.getElementById("reqForm");
+  const ngayInput = document.getElementById("ngay");
+  const tenInput = document.getElementById("ten");
+  const loaiYeuCauInput = document.getElementById("loaiYeuCau");
+  const noiDungInput = document.getElementById("noiDung");
+  const submitBtn = document.getElementById("submitBtn");
+  const statusEl = document.getElementById("status");
+  const reqBody = document.getElementById("reqBody");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const configWarning = document.getElementById("configWarning");
+  const tuNgayInput = document.getElementById("tuNgay");
+  const denNgayInput = document.getElementById("denNgay");
+  const locTrangThaiSelect = document.getElementById("locTrangThai");
+  const clearFilterBtn = document.getElementById("clearFilterBtn");
+
+  let allEntries = [];
+
+  function init() {
+    if (!WEB_APP_URL) configWarning.style.display = "block";
+
+    const today = new Date();
+    ngayInput.value = today.toISOString().slice(0, 10);
+
+    form.addEventListener("submit", onSubmit);
+    refreshBtn.addEventListener("click", loadEntries);
+    tuNgayInput.addEventListener("change", renderTable);
+    denNgayInput.addEventListener("change", renderTable);
+    locTrangThaiSelect.addEventListener("change", renderTable);
+    clearFilterBtn.addEventListener("click", function () {
+      tuNgayInput.value = "";
+      denNgayInput.value = "";
+      locTrangThaiSelect.value = "";
+      renderTable();
+    });
+
+    loadEntries();
+  }
+
+  function showStatus(msg, kind) {
+    statusEl.textContent = msg;
+    statusEl.className = "status " + kind;
+  }
+
+  function onSubmit(e) {
+    e.preventDefault();
+    if (!WEB_APP_URL) {
+      showStatus("Chưa cấu hình WEB_APP_URL, không thể lưu.", "err");
+      return;
+    }
+
+    const payload = {
+      // Gửi nguyên dạng "yyyy-MM-dd" của <input type="date"> — không tự
+      // format lại thành dd/MM/yyyy vì Google Sheets sẽ đoán nhầm ngày ≤12
+      // theo kiểu Mỹ (MM/DD) khi ghi chuỗi. Code.gs dựng Date từ giá trị này.
+      ngay: ngayInput.value,
+      ten: tenInput.value.trim(),
+      loaiYeuCau: loaiYeuCauInput.value.trim(),
+      noiDung: noiDungInput.value.trim()
+    };
+
+    if (!payload.ngay || !payload.ten || !payload.loaiYeuCau || !payload.noiDung) {
+      showStatus("Vui lòng điền đầy đủ Ngày, Tên, Loại yêu cầu và Nội dung.", "err");
+      return;
+    }
+
+    submitBtn.disabled = true;
+    showStatus("Đang gửi...", "ok");
+
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.result === "success") {
+          showStatus("Đã gửi yêu cầu.", "ok");
+          form.reset();
+          ngayInput.value = new Date().toISOString().slice(0, 10);
+          loadEntries();
+        } else {
+          showStatus("Lỗi: " + (data.message || "không rõ"), "err");
+        }
+      })
+      .catch(function (err) {
+        showStatus("Lỗi kết nối: " + err.message, "err");
+      })
+      .finally(function () {
+        submitBtn.disabled = false;
+      });
+  }
+
+  function capNhatTrangThai(id, trangThai, ghiChuXuLy) {
+    if (!WEB_APP_URL) return;
+    return fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "capNhatTrangThai", id: id, trangThai: trangThai, ghiChuXuLy: ghiChuXuLy || "" })
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.result === "success") {
+          loadEntries();
+        } else {
+          alert("Lỗi: " + (data.message || "không rõ"));
+        }
+      })
+      .catch(function (err) {
+        alert("Lỗi kết nối: " + err.message);
+      });
+  }
+
+  function onDuyet(id) {
+    capNhatTrangThai(id, "Đã duyệt", "");
+  }
+
+  function onTuChoi(id) {
+    const ly = window.prompt("Lý do từ chối (có thể để trống):", "");
+    if (ly === null) return; // bấm Cancel
+    capNhatTrangThai(id, "Từ chối", ly);
+  }
+
+  function onDatLaiChoDuyet(id) {
+    capNhatTrangThai(id, "Chờ duyệt", "");
+  }
+
+  window.onDuyet = onDuyet;
+  window.onTuChoi = onTuChoi;
+  window.onDatLaiChoDuyet = onDatLaiChoDuyet;
+
+  function parseVnDate(str) {
+    // "dd/MM/yyyy" -> Date (local midnight), hoặc null nếu không parse được.
+    if (!str) return null;
+    const parts = str.split("/");
+    if (parts.length !== 3) return null;
+    const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function loadEntries() {
+    if (!WEB_APP_URL) {
+      reqBody.innerHTML = '<tr><td colspan="6" class="empty">Chưa cấu hình WEB_APP_URL.</td></tr>';
+      return;
+    }
+    reqBody.innerHTML = '<tr><td colspan="6" class="loading">Đang tải...</td></tr>';
+
+    fetch(WEB_APP_URL)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.result !== "success") {
+          reqBody.innerHTML = '<tr><td colspan="6" class="empty">Lỗi tải dữ liệu.</td></tr>';
+          return;
+        }
+        allEntries = data.data;
+        renderTable();
+      })
+      .catch(function (err) {
+        reqBody.innerHTML = '<tr><td colspan="6" class="empty">Lỗi tải dữ liệu: ' + escapeHtml(err.message) + "</td></tr>";
+      });
+  }
+
+  function badgeFor(trangThai) {
+    if (trangThai === "Đã duyệt") return '<span class="badge badge-duyet">Đã duyệt</span>';
+    if (trangThai === "Từ chối") return '<span class="badge badge-tuchoi">Từ chối</span>';
+    return '<span class="badge badge-cho">Chờ duyệt</span>';
+  }
+
+  function actionsFor(row) {
+    if (row.trangThai === "Đã duyệt" || row.trangThai === "Từ chối") {
+      return '<div class="action-btns"><button type="button" class="btn-lai" onclick="onDatLaiChoDuyet(\'' + row.id + '\')">Đặt lại chờ duyệt</button></div>';
+    }
+    return '<div class="action-btns">' +
+      '<button type="button" class="btn-duyet" onclick="onDuyet(\'' + row.id + '\')">Duyệt</button>' +
+      '<button type="button" class="btn-tuchoi" onclick="onTuChoi(\'' + row.id + '\')">Từ chối</button>' +
+      '</div>';
+  }
+
+  function renderTable() {
+    const tuNgay = tuNgayInput.value ? new Date(tuNgayInput.value + "T00:00:00") : null;
+    const denNgay = denNgayInput.value ? new Date(denNgayInput.value + "T00:00:00") : null;
+    const trangThaiLoc = locTrangThaiSelect.value;
+
+    const filtered = allEntries.filter(function (row) {
+      if (trangThaiLoc && row.trangThai !== trangThaiLoc) return false;
+      if (!tuNgay && !denNgay) return true;
+      const d = parseVnDate(row.ngay);
+      if (!d) return true; // giữ lại dòng không parse được ngày thay vì ẩn nhầm
+      if (tuNgay && d < tuNgay) return false;
+      if (denNgay && d > denNgay) return false;
+      return true;
+    });
+
+    if (!filtered.length) {
+      reqBody.innerHTML = '<tr><td colspan="6" class="empty">Không có yêu cầu nào phù hợp.</td></tr>';
+      return;
+    }
+
+    reqBody.innerHTML = filtered.map(function (row) {
+      const ghiChu = row.ghiChuXuLy ? '<div class="ghichu-note">' + escapeHtml(row.ghiChuXuLy) + '</div>' : "";
+      return "<tr>" +
+        "<td>" + escapeHtml(row.ngay) + "</td>" +
+        "<td>" + escapeHtml(row.ten) + "</td>" +
+        "<td>" + escapeHtml(row.loaiYeuCau) + "</td>" +
+        "<td>" + escapeHtml(row.noiDung) + "</td>" +
+        "<td>" + badgeFor(row.trangThai) + ghiChu + "</td>" +
+        "<td>" + actionsFor(row) + "</td>" +
+        "</tr>";
+    }).join("");
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>
