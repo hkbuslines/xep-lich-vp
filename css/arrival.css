@@ -68,7 +68,8 @@ body.arrival-body {
 
 .arrival-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: clamp(14px, 1.6vw, 22px);
 }
 
@@ -153,7 +154,10 @@ body.arrival-body {
 .time-delay {
   color: #c1440e;
   font-weight: 700;
-  animation: blink 1.4s step-start infinite;
+  font-size: 1.1em;
+  background: #fdeae0;
+  padding: 2px 8px;
+  border-radius: 5px;
 }
 
 .row-actions {
