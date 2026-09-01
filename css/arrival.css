@@ -3,8 +3,8 @@
 body.arrival-body {
   margin: 0;
   min-height: 100vh;
-  background: #05070d;
-  color: #ffcf4d;
+  background: #ffffff;
+  color: #1f2a24;
   font-family: 'Courier New', 'Consolas', monospace;
   display: flex;
   flex-direction: column;
@@ -16,8 +16,8 @@ body.arrival-body {
   justify-content: space-between;
   gap: 16px;
   padding: 18px 28px;
-  background: #0c1220;
-  border-bottom: 3px solid #ffcf4d;
+  background: #ffffff;
+  border-bottom: 4px solid #3fa34d;
 }
 
 .arrival-title {
@@ -25,14 +25,21 @@ body.arrival-body {
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: #fff;
+  color: #1f2a24;
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
+.hk-logo {
+  height: clamp(28px, 3.2vw, 44px);
+  width: auto;
+  display: block;
+}
+
 .arrival-title .plane {
   display: inline-block;
+  color: #3fa34d;
   animation: fly 2.4s ease-in-out infinite;
 }
 
@@ -44,13 +51,13 @@ body.arrival-body {
 .arrival-clock {
   text-align: right;
   font-size: clamp(16px, 2vw, 26px);
-  color: #ffcf4d;
+  color: #256a30;
   line-height: 1.3;
 }
 
 .arrival-clock .date {
   font-size: 0.55em;
-  color: #9aa4b2;
+  color: #6b7280;
 }
 
 .arrival-board {
@@ -70,36 +77,38 @@ body.arrival-body {
   text-transform: uppercase;
   letter-spacing: 1.5px;
   font-size: 0.55em;
-  color: #9aa4b2;
+  color: #6b7280;
   padding: 10px 14px;
-  border-bottom: 2px solid #2a3346;
+  border-bottom: 2px solid #d7ded9;
   position: sticky;
   top: 0;
-  background: #05070d;
+  background: #ffffff;
 }
 
 .arrival-table tbody td {
   padding: 16px 14px;
-  border-bottom: 1px solid #1c2436;
+  border-bottom: 1px solid #e6ebe7;
   white-space: nowrap;
 }
 
 .arrival-table tbody tr.is-arrived {
-  color: #6fe58b;
+  background: #eef9f0;
+  color: #1e7a2e;
 }
 
 .arrival-table tbody tr.is-waiting {
-  color: #ffcf4d;
+  color: #1f2a24;
 }
 
 .col-plate {
   font-weight: 700;
   letter-spacing: 1px;
+  color: #1f2a24;
 }
 
 .col-route {
   white-space: normal !important;
-  color: #dbe2ee;
+  color: #445048;
   font-size: 0.85em;
 }
 
@@ -115,46 +124,71 @@ body.arrival-body {
 }
 
 .status-pill.waiting {
-  background: #3a2e0a;
-  color: #ffcf4d;
+  background: #fdf1de;
+  color: #b8720a;
   animation: blink 1.4s step-start infinite;
 }
 
 .status-pill.arrived {
-  background: #0f3a1e;
-  color: #6fe58b;
+  background: #dcf3e0;
+  color: #1e7a2e;
+}
+
+.status-pill.delay {
+  background: #fdeae0;
+  color: #c1440e;
+  animation: blink 1.4s step-start infinite;
 }
 
 @keyframes blink {
   50% { opacity: 0.35; }
 }
 
-.arrive-btn {
-  font-family: inherit;
-  font-size: 0.75em;
+.time-original {
+  text-decoration: line-through;
+  color: #9aa4a0;
+  margin-right: 8px;
+}
+
+.time-delay {
+  color: #c1440e;
   font-weight: 700;
-  letter-spacing: 1px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 2px solid #ffcf4d;
-  background: transparent;
-  color: #ffcf4d;
+  animation: blink 1.4s step-start infinite;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.icon-btn {
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  border: 1px solid #d7ded9;
+  background: #fbfcfb;
+  color: #9aa4a0;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color .15s, color .15s;
 }
 
-.arrive-btn:hover {
-  background: #ffcf4d;
-  color: #05070d;
+.icon-btn:hover {
+  border-color: #9aa4a0;
+  color: #445048;
 }
 
-.arrive-btn.undo {
-  border-color: #6fe58b;
-  color: #6fe58b;
-}
-
-.arrive-btn.undo:hover {
-  background: #6fe58b;
-  color: #05070d;
+.icon-btn.is-on {
+  border-color: #c8ced0;
+  color: #6b7280;
+  background: #f3f5f3;
 }
 
 .arrival-empty,
@@ -162,22 +196,113 @@ body.arrival-body {
   margin: 40px auto;
   max-width: 640px;
   text-align: center;
-  color: #9aa4b2;
+  color: #6b7280;
   font-size: 16px;
   line-height: 1.6;
   padding: 0 20px;
 }
 
 .arrival-setup code {
-  background: #0c1220;
+  background: #f0f4f1;
   padding: 2px 8px;
   border-radius: 4px;
-  color: #ffcf4d;
+  color: #256a30;
 }
 
 .arrival-footer {
   padding: 10px 28px;
   text-align: right;
   font-size: 12px;
-  color: #4a5568;
+  color: #9aa4a0;
+  border-top: 1px solid #e6ebe7;
+}
+
+.delay-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 42, 36, 0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.delay-modal-overlay:not([hidden]) {
+  display: flex;
+}
+
+.delay-modal {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 28px 32px;
+  min-width: 300px;
+  box-shadow: 0 20px 50px rgba(31, 42, 36, 0.25);
+  font-family: 'Courier New', 'Consolas', monospace;
+}
+
+.delay-modal h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #1f2a24;
+}
+
+.delay-modal-sub {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.delay-modal input[type="time"] {
+  width: 100%;
+  font-family: inherit;
+  font-size: 22px;
+  padding: 10px 12px;
+  border: 2px solid #d7ded9;
+  border-radius: 8px;
+  color: #1f2a24;
+  margin-bottom: 20px;
+}
+
+.delay-modal input[type="time"]:focus {
+  outline: none;
+  border-color: #c1440e;
+}
+
+.delay-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn-ghost, .btn-solid {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 2px solid #d7ded9;
+  color: #6b7280;
+}
+
+.btn-ghost:hover {
+  border-color: #9aa4a0;
+  color: #1f2a24;
+}
+
+.btn-solid {
+  background: #c1440e;
+  border: 2px solid #c1440e;
+  color: #ffffff;
+}
+
+.btn-solid:hover {
+  background: #a8390b;
 }

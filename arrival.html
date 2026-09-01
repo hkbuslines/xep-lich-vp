@@ -5,7 +5,10 @@
 
 <body class="arrival-body">
   <header class="arrival-header">
-    <div class="arrival-title"><span class="plane">🛬</span> Xe đón khách Sân bay Nội Bài</div>
+    <div class="arrival-title">
+      <img src="img/hk-logo.png" alt="HK Buslines" class="hk-logo">
+      <span class="plane">🛬</span> Xe đón khách Sân bay Nội Bài
+    </div>
     <div class="arrival-clock">
       <div id="clockTime">--:--:--</div>
       <div class="date" id="clockDate">—</div>
@@ -22,7 +25,7 @@
           <th>Biển số xe</th>
           <th>Tài xế</th>
           <th>Trạng thái</th>
-          <th></th>
+          <th>Thao tác</th>
         </tr>
       </thead>
       <tbody id="arrivalBody"></tbody>
@@ -31,6 +34,18 @@
   </main>
 
   <footer class="arrival-footer" id="footerStatus">—</footer>
+
+  <div class="delay-modal-overlay" id="delayModal" hidden>
+    <div class="delay-modal">
+      <h2>Nhập giờ chạy mới</h2>
+      <p class="delay-modal-sub" id="delayModalSub"></p>
+      <input type="time" id="delayModalInput">
+      <div class="delay-modal-actions">
+        <button class="btn-ghost" id="delayModalCancel">Huỷ</button>
+        <button class="btn-solid" id="delayModalSave">Lưu</button>
+      </div>
+    </div>
+  </div>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
