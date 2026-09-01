@@ -66,14 +66,23 @@
     // hàng đều là ô rời trực tiếp trong CÙNG 1 grid (.board-wrap) để đảm bảo
     // luôn thẳng cột: 1 grid duy nhất tính độ rộng cột chung cho tất cả, khác
     // với việc mỗi hàng tự làm 1 grid riêng (sẽ lệch cột giữa các hàng).
-    Array.prototype.slice.call(boardWrap.querySelectorAll('.board-cell:not(.head)'))
+    Array.prototype.slice.call(boardWrap.querySelectorAll('.board-cell:not(.head), .board-row-bg'))
       .forEach(function (el) { el.remove(); });
 
-    trips.forEach(function (row) {
+    trips.forEach(function (row, i) {
       var state = arrivals[row.id] || {};
       var isArrived = !!state.arrived;
       var delayed = state.delayedTime || null;
       var statusClass = isArrived ? 'is-arrived' : 'is-waiting';
+      // Header chiếm hàng lưới 1 -> mỗi chuyến ở hàng lưới i+2. Đặt rõ
+      // gridRow cho cả lớp nền lẫn 6 ô chữ để chúng nằm ĐÚNG 1 hàng — nếu để
+      // tự động sắp xếp, ô nền (chiếm hết 6 cột) sẽ bị đẩy sang hàng riêng.
+      var gridRow = i + 2;
+
+      var rowBg = document.createElement('div');
+      rowBg.className = 'board-row-bg ' + statusClass;
+      rowBg.style.gridRow = gridRow;
+      boardWrap.appendChild(rowBg);
 
       var driver = row.driver || '';
       if (row.driver2) driver += (driver ? ' & ' : '') + row.driver2;
@@ -95,15 +104,19 @@
             : '<span class="status-pill waiting">⏳ CHƯA ĐẾN</span>' },
       ];
 
-      cellDefs.forEach(function (def) {
+      cellDefs.forEach(function (def, colIdx) {
         var cell = document.createElement('div');
         cell.className = ('board-cell ' + statusClass + ' ' + def.cls).trim();
+        cell.style.gridRow = gridRow;
+        cell.style.gridColumn = colIdx + 1;
         cell.innerHTML = def.html;
         boardWrap.appendChild(cell);
       });
 
       var actionsCell = document.createElement('div');
       actionsCell.className = 'board-cell ' + statusClass;
+      actionsCell.style.gridRow = gridRow;
+      actionsCell.style.gridColumn = 6;
       var actions = document.createElement('div');
       actions.className = 'row-actions';
 

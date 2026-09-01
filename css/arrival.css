@@ -82,7 +82,8 @@ body.arrival-body {
 
 .board-cell {
   padding: 16px 14px;
-  border-bottom: 1px solid #e6ebe7;
+  position: relative;
+  z-index: 1;
 }
 
 .board-cell.head {
@@ -102,12 +103,25 @@ body.arrival-body {
 }
 
 .board-cell.is-arrived {
-  background: #eef9f0;
   color: #1e7a2e;
 }
 
 .board-cell.is-waiting {
   color: #1f2a24;
+}
+
+/* 1 lớp nền/viền chạy suốt cả hàng (dưới chữ), tránh mỗi ô 1 mảng màu rời
+   rạc do column-gap giữa các cột — xem ghi chú trong arrival-app.js. */
+.board-row-bg {
+  grid-column: 1 / -1;
+  align-self: stretch;
+  border-bottom: 1px solid #e6ebe7;
+  pointer-events: none;
+}
+
+.board-row-bg.is-arrived {
+  background: #eef9f0;
+  border-bottom-color: #cdeed3;
 }
 
 .col-time {
