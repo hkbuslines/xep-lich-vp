@@ -61,15 +61,19 @@
     }
     boardWrap.hidden = false;
     emptyHint.hidden = true;
-    body.innerHTML = '';
+
+    // Xoá các ô dữ liệu cũ, GIỮ LẠI 6 ô tiêu đề (.head) — cả header lẫn mọi
+    // hàng đều là ô rời trực tiếp trong CÙNG 1 grid (.board-wrap) để đảm bảo
+    // luôn thẳng cột: 1 grid duy nhất tính độ rộng cột chung cho tất cả, khác
+    // với việc mỗi hàng tự làm 1 grid riêng (sẽ lệch cột giữa các hàng).
+    Array.prototype.slice.call(boardWrap.querySelectorAll('.board-cell:not(.head)'))
+      .forEach(function (el) { el.remove(); });
 
     trips.forEach(function (row) {
       var state = arrivals[row.id] || {};
       var isArrived = !!state.arrived;
       var delayed = state.delayedTime || null;
-
-      var rowEl = document.createElement('div');
-      rowEl.className = 'board-row ' + (isArrived ? 'is-arrived' : 'is-waiting');
+      var statusClass = isArrived ? 'is-arrived' : 'is-waiting';
 
       var driver = row.driver || '';
       if (row.driver2) driver += (driver ? ' & ' : '') + row.driver2;
@@ -79,20 +83,27 @@
           '<span class="time-delay">→ ' + delayed + '</span>'
         : (row.departure_time || '—');
 
-      rowEl.innerHTML =
-        '<div class="col-time">' + timeCell + '</div>' +
-        '<div class="col-route">' + fmtRoute(row) + '</div>' +
-        '<div class="col-plate">' + (row.plate || '—') + '</div>' +
-        '<div>' + (driver || '—') + '</div>' +
-        '<div>' + (
-          isArrived
+      var cellDefs = [
+        { cls: 'col-time', html: timeCell },
+        { cls: 'col-route', html: fmtRoute(row) },
+        { cls: 'col-plate', html: row.plate || '—' },
+        { cls: '', html: driver || '—' },
+        { cls: '', html: isArrived
             ? '<span class="status-pill arrived">✅ ĐÃ ĐẾN</span>'
             : delayed
             ? '<span class="status-pill delay">🕓 TRỄ GIỜ</span>'
-            : '<span class="status-pill waiting">⏳ CHƯA ĐẾN</span>'
-        ) + '</div>' +
-        '<div class="row-actions-slot"></div>';
+            : '<span class="status-pill waiting">⏳ CHƯA ĐẾN</span>' },
+      ];
 
+      cellDefs.forEach(function (def) {
+        var cell = document.createElement('div');
+        cell.className = ('board-cell ' + statusClass + ' ' + def.cls).trim();
+        cell.innerHTML = def.html;
+        boardWrap.appendChild(cell);
+      });
+
+      var actionsCell = document.createElement('div');
+      actionsCell.className = 'board-cell ' + statusClass;
       var actions = document.createElement('div');
       actions.className = 'row-actions';
 
@@ -128,8 +139,8 @@
         actions.appendChild(clearBtn);
       }
 
-      rowEl.lastChild.appendChild(actions);
-      body.appendChild(rowEl);
+      actionsCell.appendChild(actions);
+      boardWrap.appendChild(actionsCell);
     });
   }
 
