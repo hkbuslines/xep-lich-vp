@@ -62,42 +62,55 @@ body.arrival-body {
 
 .arrival-board {
   flex: 1;
-  overflow: auto;
-  padding: 18px 28px 28px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 28px 0;
 }
 
-.arrival-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+.board-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   font-size: clamp(14px, 1.6vw, 22px);
 }
 
-.arrival-table thead th {
-  text-align: left;
+.board-head,
+.board-row {
+  display: grid;
+  grid-template-columns: 6.5em minmax(9em, 1fr) 7.5em minmax(10em, 1.3fr) 9em 5.5em;
+  align-items: center;
+  column-gap: 14px;
+}
+
+.board-head {
   text-transform: uppercase;
   letter-spacing: 1.5px;
   font-size: 0.55em;
   color: #6b7280;
-  padding: 10px 14px;
+  padding: 0 14px 10px;
   border-bottom: 2px solid #d7ded9;
-  position: sticky;
-  top: 0;
-  background: #ffffff;
+  flex: 0 0 auto;
 }
 
-.arrival-table tbody td {
+.board-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.board-row {
   padding: 16px 14px;
   border-bottom: 1px solid #e6ebe7;
-  white-space: nowrap;
 }
 
-.arrival-table tbody tr.is-arrived {
+.board-row.is-arrived {
   background: #eef9f0;
   color: #1e7a2e;
 }
 
-.arrival-table tbody tr.is-waiting {
+.board-row.is-waiting {
   color: #1f2a24;
 }
 

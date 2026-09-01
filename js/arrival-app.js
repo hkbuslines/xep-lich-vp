@@ -2,8 +2,8 @@
   'use strict';
 
   var setupHint = document.getElementById('setupHint');
-  var table = document.getElementById('arrivalTable');
-  var tbody = document.getElementById('arrivalBody');
+  var boardWrap = document.getElementById('arrivalTable');
+  var body = document.getElementById('arrivalBody');
   var emptyHint = document.getElementById('emptyHint');
   var footerStatus = document.getElementById('footerStatus');
 
@@ -56,21 +56,21 @@
     if (!roster) return;
     var trips = roster.trips || [];
     if (!trips.length) {
-      table.hidden = true;
+      boardWrap.hidden = true;
       emptyHint.hidden = false;
       return;
     }
-    table.hidden = false;
+    boardWrap.hidden = false;
     emptyHint.hidden = true;
-    tbody.innerHTML = '';
+    body.innerHTML = '';
 
     trips.forEach(function (row) {
       var state = arrivals[row.id] || {};
       var isArrived = !!state.arrived;
       var delayed = state.delayedTime || null;
 
-      var tr = document.createElement('tr');
-      tr.className = isArrived ? 'is-arrived' : 'is-waiting';
+      var rowEl = document.createElement('div');
+      rowEl.className = 'board-row ' + (isArrived ? 'is-arrived' : 'is-waiting');
 
       var driver = row.driver || '';
       if (row.driver2) driver += (driver ? ' & ' : '') + row.driver2;
@@ -80,19 +80,19 @@
           '<span class="time-delay">→ ' + delayed + '</span>'
         : (row.departure_time || '—');
 
-      tr.innerHTML =
-        '<td>' + timeCell + '</td>' +
-        '<td class="col-route">' + fmtRoute(row) + '</td>' +
-        '<td class="col-plate">' + (row.plate || '—') + '</td>' +
-        '<td>' + (driver || '—') + '</td>' +
-        '<td>' + (
+      rowEl.innerHTML =
+        '<div>' + timeCell + '</div>' +
+        '<div class="col-route">' + fmtRoute(row) + '</div>' +
+        '<div class="col-plate">' + (row.plate || '—') + '</div>' +
+        '<div>' + (driver || '—') + '</div>' +
+        '<div>' + (
           isArrived
             ? '<span class="status-pill arrived">✅ ĐÃ ĐẾN</span>'
             : delayed
             ? '<span class="status-pill delay">🕓 TRỄ GIỜ</span>'
             : '<span class="status-pill waiting">⏳ CHƯA ĐẾN</span>'
-        ) + '</td>' +
-        '<td></td>';
+        ) + '</div>' +
+        '<div class="row-actions-slot"></div>';
 
       var actions = document.createElement('div');
       actions.className = 'row-actions';
@@ -129,8 +129,8 @@
         actions.appendChild(clearBtn);
       }
 
-      tr.lastChild.appendChild(actions);
-      tbody.appendChild(tr);
+      rowEl.lastChild.appendChild(actions);
+      body.appendChild(rowEl);
     });
   }
 
