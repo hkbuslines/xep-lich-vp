@@ -3,7 +3,6 @@
 
   var setupHint = document.getElementById('setupHint');
   var boardWrap = document.getElementById('arrivalTable');
-  var body = document.getElementById('arrivalBody');
   var emptyHint = document.getElementById('emptyHint');
   var footerStatus = document.getElementById('footerStatus');
 
@@ -81,7 +80,7 @@
         : (row.departure_time || '—');
 
       rowEl.innerHTML =
-        '<div>' + timeCell + '</div>' +
+        '<div class="col-time">' + timeCell + '</div>' +
         '<div class="col-route">' + fmtRoute(row) + '</div>' +
         '<div class="col-plate">' + (row.plate || '—') + '</div>' +
         '<div>' + (driver || '—') + '</div>' +
