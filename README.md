@@ -113,4 +113,22 @@ js/office-app.js      Logic trang office.html (kéo-thả, lưu, chọn tuần)
 js/master-app.js      Logic trang index.html (tổng hợp, theo dõi real-time)
 css/style.css         Giao diện chung (tự đổi sáng/tối theo hệ điều hành)
 firestore.rules       Rule Firestore đề xuất — dán vào Firebase Console
+arrival.html          Bảng thông báo kiểu sân bay — xe nào đã đến điểm đón Sân bay Nội Bài
+js/arrival-app.js     Logic trang arrival.html (đọc/ghi Firestore real-time)
+css/arrival.css       Giao diện tối màu kiểu bảng lật sân bay
+scripts/airport_board.py  Kéo chuyến hôm nay từ Odoo, đẩy lên Firestore cho arrival.html đọc
 ```
+
+## Bảng thông báo "xe đến sân bay" (arrival.html)
+
+Kiểu bảng lật sân bay, hiển thị chuyến nào (tuyến Hà Nội - Sa Pa có đón khách ở Sân bay Nội Bài) đã
+đến điểm đón, chuyến nào chưa — dùng cho màn hình TV/tablet đặt tại điểm đón.
+
+1. Publish `firestore.rules` (bản trong repo) lên Firebase Console — 1 lần duy nhất.
+2. Đặt biến môi trường `ODOO_PASSWORD` (API key Odoo — xem `note.txt` trong `fleet_odoo/`, KHÔNG
+   ghi thẳng vào file vì repo này public), rồi chạy `python scripts/airport_board.py` (cần cài
+   Python) để kéo chuyến hôm nay từ Odoo lên Firestore — chạy tay, không có lịch tự động.
+3. Mở `arrival.html`, bấm nút để đánh dấu "đã đến" cho từng chuyến.
+
+Sửa nhóm tuyến tính là "sân bay" (mặc định `CD_HNSP`, `HD_MB`, `KLOOK`) ở hằng số `AIRPORT_GROUPS`
+đầu file `scripts/airport_board.py`.

@@ -1,0 +1,39 @@
+<meta charset="UTF-8">
+<title>Thông báo đón sân bay</title>
+<link rel="stylesheet" href="css/arrival.css">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<body class="arrival-body">
+  <header class="arrival-header">
+    <div class="arrival-title"><span class="plane">🛬</span> Xe đón khách Sân bay Nội Bài</div>
+    <div class="arrival-clock">
+      <div id="clockTime">--:--:--</div>
+      <div class="date" id="clockDate">—</div>
+    </div>
+  </header>
+
+  <main class="arrival-board" id="board">
+    <p class="arrival-setup" id="setupHint" hidden></p>
+    <table class="arrival-table" id="arrivalTable" hidden>
+      <thead>
+        <tr>
+          <th>Giờ chạy</th>
+          <th>Tuyến</th>
+          <th>Biển số xe</th>
+          <th>Tài xế</th>
+          <th>Trạng thái</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="arrivalBody"></tbody>
+    </table>
+    <p class="arrival-empty" id="emptyHint" hidden>Hôm nay chưa có chuyến nào trong danh sách đón sân bay.</p>
+  </main>
+
+  <footer class="arrival-footer" id="footerStatus">—</footer>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/arrival-app.js"></script>
+</body>

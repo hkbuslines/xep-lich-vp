@@ -1,0 +1,183 @@
+* { box-sizing: border-box; }
+
+body.arrival-body {
+  margin: 0;
+  min-height: 100vh;
+  background: #05070d;
+  color: #ffcf4d;
+  font-family: 'Courier New', 'Consolas', monospace;
+  display: flex;
+  flex-direction: column;
+}
+
+.arrival-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 28px;
+  background: #0c1220;
+  border-bottom: 3px solid #ffcf4d;
+}
+
+.arrival-title {
+  font-size: clamp(20px, 2.6vw, 34px);
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.arrival-title .plane {
+  display: inline-block;
+  animation: fly 2.4s ease-in-out infinite;
+}
+
+@keyframes fly {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(6px); }
+}
+
+.arrival-clock {
+  text-align: right;
+  font-size: clamp(16px, 2vw, 26px);
+  color: #ffcf4d;
+  line-height: 1.3;
+}
+
+.arrival-clock .date {
+  font-size: 0.55em;
+  color: #9aa4b2;
+}
+
+.arrival-board {
+  flex: 1;
+  overflow: auto;
+  padding: 18px 28px 28px;
+}
+
+.arrival-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(14px, 1.6vw, 22px);
+}
+
+.arrival-table thead th {
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-size: 0.55em;
+  color: #9aa4b2;
+  padding: 10px 14px;
+  border-bottom: 2px solid #2a3346;
+  position: sticky;
+  top: 0;
+  background: #05070d;
+}
+
+.arrival-table tbody td {
+  padding: 16px 14px;
+  border-bottom: 1px solid #1c2436;
+  white-space: nowrap;
+}
+
+.arrival-table tbody tr.is-arrived {
+  color: #6fe58b;
+}
+
+.arrival-table tbody tr.is-waiting {
+  color: #ffcf4d;
+}
+
+.col-plate {
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.col-route {
+  white-space: normal !important;
+  color: #dbe2ee;
+  font-size: 0.85em;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.8em;
+  letter-spacing: 1px;
+}
+
+.status-pill.waiting {
+  background: #3a2e0a;
+  color: #ffcf4d;
+  animation: blink 1.4s step-start infinite;
+}
+
+.status-pill.arrived {
+  background: #0f3a1e;
+  color: #6fe58b;
+}
+
+@keyframes blink {
+  50% { opacity: 0.35; }
+}
+
+.arrive-btn {
+  font-family: inherit;
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 2px solid #ffcf4d;
+  background: transparent;
+  color: #ffcf4d;
+  cursor: pointer;
+}
+
+.arrive-btn:hover {
+  background: #ffcf4d;
+  color: #05070d;
+}
+
+.arrive-btn.undo {
+  border-color: #6fe58b;
+  color: #6fe58b;
+}
+
+.arrive-btn.undo:hover {
+  background: #6fe58b;
+  color: #05070d;
+}
+
+.arrival-empty,
+.arrival-setup {
+  margin: 40px auto;
+  max-width: 640px;
+  text-align: center;
+  color: #9aa4b2;
+  font-size: 16px;
+  line-height: 1.6;
+  padding: 0 20px;
+}
+
+.arrival-setup code {
+  background: #0c1220;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #ffcf4d;
+}
+
+.arrival-footer {
+  padding: 10px 28px;
+  text-align: right;
+  font-size: 12px;
+  color: #4a5568;
+}

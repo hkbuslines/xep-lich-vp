@@ -12,6 +12,13 @@ service cloud.firestore {
     match /rosters/{docId} {
       allow read, write: if true;
     }
+    // Bảng thông báo "xe đã đến sân bay" (arrival.html). Doc "roster_<ngày>" do
+    // script fleet_odoo/bus_qa/airport_board.py ghi (kéo từ Odoo); doc
+    // "arrivals_<ngày>" do nhân viên bấm tay trên trang. Cùng mức bảo mật như
+    // "schedules"/"rosters" ở trên.
+    match /airport_board/{docId} {
+      allow read, write: if true;
+    }
     match /{document=**} {
       allow read, write: if false;
     }
