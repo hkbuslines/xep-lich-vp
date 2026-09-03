@@ -113,6 +113,7 @@
     font-size: 12px; font-weight: 600; white-space: nowrap;
   }
   .badge-cho { background: var(--warn-bg); color: var(--warn); }
+  .badge-dangxuly { background: #dbeafe; color: var(--accent-dark); }
   .badge-duyet { background: var(--ok-bg); color: var(--ok); }
   .badge-tuchoi { background: var(--danger-bg); color: var(--danger); }
   .ghichu-note { font-size: 12px; color: var(--muted); margin-top: 4px; }
@@ -121,6 +122,8 @@
     border: 1px solid var(--border); border-radius: 6px; background: #fff;
     padding: 4px 8px; font-size: 12px; cursor: pointer;
   }
+  .btn-dangxuly { color: var(--accent-dark); border-color: #bfdbfe; }
+  .btn-dangxuly:hover { background: #dbeafe; }
   .btn-duyet { color: var(--ok); border-color: #bbf7d0; }
   .btn-duyet:hover { background: var(--ok-bg); }
   .btn-tuchoi { color: var(--danger); border-color: #fecaca; }
@@ -189,6 +192,7 @@
             <select id="locTrangThai">
               <option value="">Tất cả</option>
               <option value="Chờ duyệt">Chờ duyệt</option>
+              <option value="Đang xử lý">Đang xử lý</option>
               <option value="Đã duyệt">Đã duyệt</option>
               <option value="Từ chối">Từ chối</option>
             </select>
@@ -337,6 +341,10 @@
       });
   }
 
+  function onDangXuLy(id) {
+    capNhatTrangThai(id, "Đang xử lý", "");
+  }
+
   function onDuyet(id) {
     capNhatTrangThai(id, "Đã duyệt", "");
   }
@@ -351,6 +359,7 @@
     capNhatTrangThai(id, "Chờ duyệt", "");
   }
 
+  window.onDangXuLy = onDangXuLy;
   window.onDuyet = onDuyet;
   window.onTuChoi = onTuChoi;
   window.onDatLaiChoDuyet = onDatLaiChoDuyet;
@@ -389,6 +398,7 @@
   function badgeFor(trangThai) {
     if (trangThai === "Đã duyệt") return '<span class="badge badge-duyet">Đã duyệt</span>';
     if (trangThai === "Từ chối") return '<span class="badge badge-tuchoi">Từ chối</span>';
+    if (trangThai === "Đang xử lý") return '<span class="badge badge-dangxuly">Đang xử lý</span>';
     return '<span class="badge badge-cho">Chờ duyệt</span>';
   }
 
@@ -396,7 +406,14 @@
     if (row.trangThai === "Đã duyệt" || row.trangThai === "Từ chối") {
       return '<div class="action-btns"><button type="button" class="btn-lai" onclick="onDatLaiChoDuyet(\'' + row.id + '\')">Đặt lại chờ duyệt</button></div>';
     }
+    if (row.trangThai === "Đang xử lý") {
+      return '<div class="action-btns">' +
+        '<button type="button" class="btn-duyet" onclick="onDuyet(\'' + row.id + '\')">Duyệt</button>' +
+        '<button type="button" class="btn-tuchoi" onclick="onTuChoi(\'' + row.id + '\')">Từ chối</button>' +
+        '</div>';
+    }
     return '<div class="action-btns">' +
+      '<button type="button" class="btn-dangxuly" onclick="onDangXuLy(\'' + row.id + '\')">Xử lý</button>' +
       '<button type="button" class="btn-duyet" onclick="onDuyet(\'' + row.id + '\')">Duyệt</button>' +
       '<button type="button" class="btn-tuchoi" onclick="onTuChoi(\'' + row.id + '\')">Từ chối</button>' +
       '</div>';
