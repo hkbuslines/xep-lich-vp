@@ -15,10 +15,18 @@
     </div>
   </header>
 
+  <div class="filter-bar">
+    <span class="filter-label">Chỉ hiện khung giờ</span>
+    <input type="time" id="filterFrom">
+    <span class="filter-sep">đến</span>
+    <input type="time" id="filterTo">
+    <button class="filter-clear" id="filterClear">Bỏ lọc</button>
+  </div>
+
   <main class="arrival-board" id="board">
     <p class="arrival-setup" id="setupHint" hidden></p>
     <div class="board-wrap" id="arrivalTable" hidden>
-      <div class="board-cell head">Giờ chạy</div>
+      <div class="board-cell head">Giờ đến SB</div>
       <div class="board-cell head">Tuyến</div>
       <div class="board-cell head">Biển số xe</div>
       <div class="board-cell head">Tài xế</div>
@@ -32,7 +40,7 @@
 
   <div class="delay-modal-overlay" id="delayModal" hidden>
     <div class="delay-modal">
-      <h2>Nhập giờ chạy mới</h2>
+      <h2>Nhập giờ đến sân bay mới</h2>
       <p class="delay-modal-sub" id="delayModalSub"></p>
       <input type="time" id="delayModalInput">
       <div class="delay-modal-actions">

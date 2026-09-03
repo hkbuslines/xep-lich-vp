@@ -51,12 +51,63 @@
     return row.route_code || from || to || '—';
   }
 
+  // Xe xuất phát cần ~45' mới tới điểm đón Sân bay Nội Bài — giờ hiển thị
+  // trên bảng là giờ DỰ KIẾN ĐẾN SÂN BAY (= giờ chạy trên lịch + 45'),
+  // không phải giờ xuất bến.
+  var AIRPORT_TRAVEL_MIN = 45;
+  function addMinutes(timeStr, mins) {
+    var m = (timeStr || '').match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return timeStr || '';
+    var total = (parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + mins + 1440) % 1440;
+    return String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
+  }
+
+  var filterFromEl = document.getElementById('filterFrom');
+  var filterToEl = document.getElementById('filterTo');
+  var filterClearEl = document.getElementById('filterClear');
+  var FILTER_KEY = 'arrivalTimeFilter';
+
+  function loadFilter() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(FILTER_KEY) || '{}');
+      filterFromEl.value = saved.from || '';
+      filterToEl.value = saved.to || '';
+    } catch (e) { /* localStorage không khả dụng — bỏ qua, coi như không lọc */ }
+  }
+  function saveFilter() {
+    try {
+      localStorage.setItem(FILTER_KEY, JSON.stringify({ from: filterFromEl.value, to: filterToEl.value }));
+    } catch (e) { /* ignore */ }
+  }
+  loadFilter();
+  [filterFromEl, filterToEl].forEach(function (el) {
+    el.addEventListener('change', function () { saveFilter(); render(); });
+  });
+  filterClearEl.addEventListener('click', function () {
+    filterFromEl.value = '';
+    filterToEl.value = '';
+    saveFilter();
+    render();
+  });
+
   function render() {
     if (!roster) return;
-    var trips = roster.trips || [];
+    var allTrips = roster.trips || [];
+    var from = filterFromEl.value;
+    var to = filterToEl.value;
+    var trips = allTrips.filter(function (row) {
+      var est = addMinutes(row.departure_time, AIRPORT_TRAVEL_MIN);
+      if (from && est < from) return false;
+      if (to && est > to) return false;
+      return true;
+    });
+
     if (!trips.length) {
       boardWrap.hidden = true;
       emptyHint.hidden = false;
+      emptyHint.textContent = allTrips.length
+        ? 'Không có chuyến nào trong khung giờ đã chọn.'
+        : 'Hôm nay chưa có chuyến nào trong danh sách đón sân bay.';
       return;
     }
     boardWrap.hidden = false;
@@ -87,10 +138,11 @@
       var driver = row.driver || '';
       if (row.driver2) driver += (driver ? ' & ' : '') + row.driver2;
 
+      var estArrival = addMinutes(row.departure_time, AIRPORT_TRAVEL_MIN);
       var timeCell = delayed
-        ? '<span class="time-original">' + (row.departure_time || '—') + '</span>' +
+        ? '<span class="time-original">' + estArrival + '</span>' +
           '<span class="time-delay">→ ' + delayed + '</span>'
-        : (row.departure_time || '—');
+        : estArrival;
 
       var cellDefs = [
         { cls: 'col-time', html: timeCell },
@@ -136,7 +188,7 @@
       delayBtn.setAttribute('aria-label', delayBtn.title);
       delayBtn.textContent = '⏰';
       delayBtn.addEventListener('click', function () {
-        promptDelay(row.id, row.departure_time, delayed);
+        promptDelay(row.id, estArrival, delayed);
       });
       actions.appendChild(delayBtn);
 
@@ -177,7 +229,7 @@
 
   function promptDelay(tripId, originalTime, current) {
     delayModalTripId = tripId;
-    delayModalSub.textContent = 'Giờ gốc trên lịch: ' + (originalTime || '—');
+    delayModalSub.textContent = 'Giờ dự kiến đến SB (theo lịch): ' + (originalTime || '—');
     delayModalInput.value = current || originalTime || '';
     delayModal.hidden = false;
     delayModalInput.focus();

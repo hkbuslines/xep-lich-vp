@@ -20,6 +20,58 @@ body.arrival-body {
   border-bottom: 4px solid #3fa34d;
 }
 
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 28px;
+  background: #f7faf7;
+  border-bottom: 1px solid #e6ebe7;
+  font-size: 13px;
+}
+
+.filter-label {
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.85em;
+}
+
+.filter-sep {
+  color: #9aa4a0;
+}
+
+.filter-bar input[type="time"] {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 5px 8px;
+  border: 1px solid #d7ded9;
+  border-radius: 6px;
+  color: #1f2a24;
+  background: #ffffff;
+}
+
+.filter-bar input[type="time"]:focus {
+  outline: none;
+  border-color: #3fa34d;
+}
+
+.filter-clear {
+  font-family: inherit;
+  font-size: 13px;
+  color: #6b7280;
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 4px;
+}
+
+.filter-clear:hover {
+  color: #1f2a24;
+}
+
 .arrival-title {
   font-size: clamp(20px, 2.6vw, 34px);
   font-weight: 700;
