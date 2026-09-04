@@ -101,7 +101,7 @@
   col.col-ten { width: 130px; }
   col.col-loai { width: 140px; }
   col.col-trangthai { width: 110px; }
-  col.col-action { width: 150px; }
+  col.col-action { width: 190px; }
   .empty, .loading { color: var(--muted); font-size: 13px; padding: 8px 0; }
   .table-scroll { overflow-x: auto; }
   .config-warning {
@@ -130,6 +130,8 @@
   .btn-tuchoi:hover { background: var(--danger-bg); }
   .btn-lai { color: var(--muted); }
   .btn-lai:hover { background: #f0f1f3; }
+  .btn-xoa { color: var(--danger); }
+  .btn-xoa:hover { background: var(--danger-bg); }
 </style>
 </head>
 <body>
@@ -359,6 +361,29 @@
     capNhatTrangThai(id, "Chờ duyệt", "");
   }
 
+  function onXoa(id) {
+    if (!WEB_APP_URL) return;
+    if (!window.confirm("Xóa yêu cầu này? Không thể hoàn tác.")) return;
+
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "xoa", id: id })
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.result === "success") {
+          loadEntries();
+        } else {
+          alert("Lỗi: " + (data.message || "không rõ"));
+        }
+      })
+      .catch(function (err) {
+        alert("Lỗi kết nối: " + err.message);
+      });
+  }
+
+  window.onXoa = onXoa;
   window.onDangXuLy = onDangXuLy;
   window.onDuyet = onDuyet;
   window.onTuChoi = onTuChoi;
@@ -403,19 +428,23 @@
   }
 
   function actionsFor(row) {
+    const xoaBtn = '<button type="button" class="btn-xoa" onclick="onXoa(\'' + row.id + '\')">Xóa</button>';
+
     if (row.trangThai === "Đã duyệt" || row.trangThai === "Từ chối") {
-      return '<div class="action-btns"><button type="button" class="btn-lai" onclick="onDatLaiChoDuyet(\'' + row.id + '\')">Đặt lại chờ duyệt</button></div>';
+      return '<div class="action-btns"><button type="button" class="btn-lai" onclick="onDatLaiChoDuyet(\'' + row.id + '\')">Đặt lại chờ duyệt</button>' + xoaBtn + '</div>';
     }
     if (row.trangThai === "Đang xử lý") {
       return '<div class="action-btns">' +
         '<button type="button" class="btn-duyet" onclick="onDuyet(\'' + row.id + '\')">Duyệt</button>' +
         '<button type="button" class="btn-tuchoi" onclick="onTuChoi(\'' + row.id + '\')">Từ chối</button>' +
+        xoaBtn +
         '</div>';
     }
     return '<div class="action-btns">' +
       '<button type="button" class="btn-dangxuly" onclick="onDangXuLy(\'' + row.id + '\')">Xử lý</button>' +
       '<button type="button" class="btn-duyet" onclick="onDuyet(\'' + row.id + '\')">Duyệt</button>' +
       '<button type="button" class="btn-tuchoi" onclick="onTuChoi(\'' + row.id + '\')">Từ chối</button>' +
+      xoaBtn +
       '</div>';
   }
 
