@@ -270,11 +270,6 @@
   // Dán URL Web App Apps Script của bạn vào đây (xem hướng dẫn trong Code.gs).
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz0oyBbNRD7L5rJr9wp6DeFwvma9uOUcIa2-fE8x7bXR3K4Tb-Idw3HB6cz-6tTexma/exec";
 
-  // Backend chung của trang "Lịch nghỉ phép lái xe" (hkbuslines.github.io/bang_gia_hk_vp/lai_xe_nghi.html),
-  // dùng để tự động thêm 1 mục nghỉ khi duyệt yêu cầu nghỉ phép ở đây.
-  const LEAVE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbx-ZuB1sby0hp77b4tj4UY_3JUwAEUkA92GgXN8lQC4pLV7gVL3XPvO1xfDhNFF5nG6LQ/exec";
-  const LEAVE_SHEET_KEY = "leave";
-
   const form = document.getElementById("reqForm");
   const ngayInput = document.getElementById("ngay");
   const tenInput = document.getElementById("ten");
@@ -481,23 +476,7 @@
   function onDuyet(id) {
     const note = window.prompt("Ghi chú khi duyệt (có thể để trống):", "");
     if (note === null) return; // bấm Cancel
-    const row = allEntries.find(function (e) { return e.id === id; });
-    capNhatTrangThai(id, "Đã duyệt", note).then(function (data) {
-      if (!data || data.result !== "success" || !row || row.daDayLichNghi || !isNghiPhep(row.loaiYeuCau)) return;
-
-      let tu = row.tuNgayNghi;
-      let den = row.denNgayNghi;
-      if (!tu || !den) {
-        // Yêu cầu cũ nhập tự do, chưa có ô ngày riêng — thử tự đọc ngày từ Nội dung.
-        const parsed = parseNgayNghiFromText(row.noiDung, row.ngay);
-        if (parsed) { tu = parsed.tu; den = parsed.den; }
-      }
-      if (tu && den) {
-        // row lấy từ allEntries trước khi duyệt nên ghiChuXuLy còn cũ — ghi đè bằng
-        // note vừa nhập (giờ đã là giá trị thật trên Sheet) để đẩy đúng ghi chú mới.
-        pushToLeaveSystem(Object.assign({}, row, { tuNgayNghi: tu, denNgayNghi: den, ghiChuXuLy: note }));
-      }
-    });
+    capNhatTrangThai(id, "Đã duyệt", note);
   }
 
   function onTuChoi(id) {
@@ -508,119 +487,6 @@
 
   function onDatLaiChoDuyet(id) {
     capNhatTrangThai(id, "Chờ duyệt", "");
-  }
-
-  function parseNgayNghiFromText(noiDung, ngayBaoCao) {
-    // Yêu cầu cũ (trước khi có ô "Từ ngày nghỉ"/"Đến ngày nghỉ") ghi ngày ngay trong
-    // Nội dung dạng "Từ ngày 30/09/2026 - 02/10/2026 (...)" hoặc chỉ 1 ngày "ngày 6/9".
-    // Lấy tối đa 2 mốc dd/mm(/yyyy) ĐẦU TIÊN xuất hiện trong text — phần ghi chú trong
-    // ngoặc (VD: "từ 08/08 - 09/08" nói về tháng trước) luôn nằm sau nên không bị lấy nhầm.
-    if (!noiDung) return null;
-    let fallbackYear = null;
-    const ym = String(ngayBaoCao || "").match(/\/(\d{4})$/);
-    if (ym) fallbackYear = ym[1];
-
-    const re = /(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/g;
-    const found = [];
-    let m;
-    while ((m = re.exec(noiDung)) && found.length < 2) {
-      const dd = m[1].padStart(2, "0");
-      const mo = m[2].padStart(2, "0");
-      const yyyy = m[3] || fallbackYear;
-      if (!yyyy || Number(mo) > 12 || Number(dd) > 31) continue;
-      found.push(yyyy + "-" + mo + "-" + dd);
-    }
-    if (!found.length) return null;
-    return found.length === 1 ? { tu: found[0], den: found[0] } : { tu: found[0], den: found[1] };
-  }
-
-  function inferLoaiNghi(loaiYeuCau, noiDung) {
-    // Khớp với LOAI_LABEL bên trang lịch nghỉ phép: P/DX/KB/D.
-    const text = ((loaiYeuCau || "") + " " + (noiDung || "")).toLowerCase();
-    if (text.indexOf("dài ngày") !== -1) return "D";
-    if (text.indexOf("không báo") !== -1 || text.indexOf("ko báo") !== -1) return "KB";
-    if (text.indexOf("đột xuất") !== -1) return "DX";
-    return "P";
-  }
-
-  function danhDauDaDayLichNghi(id) {
-    if (!WEB_APP_URL) return;
-    fetch(WEB_APP_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action: "danhDauDaDayLichNghi", id: id })
-    }).catch(function () {}); // không chặn UI nếu lỗi — chỉ để tránh đẩy trùng lần sau
-  }
-
-  function vnDateToIso(str) {
-    // "dd/MM/yyyy" -> "yyyy-MM-dd", hoặc "" nếu không parse được.
-    const d = parseVnDate(str);
-    if (!d) return "";
-    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-  }
-
-  function sleep(ms) {
-    return new Promise(function (resolve) { setTimeout(resolve, ms); });
-  }
-
-  function fetchJsonRetry(url, options, triesLeft) {
-    // Apps Script thỉnh thoảng trả về trang lỗi HTML tạm thời ("Sorry, unable to
-    // open the file at present") thay vì JSON — không phải lỗi dữ liệu, thử lại
-    // sau 1-2 giây gần như luôn qua. Tự thử lại tối đa 3 lần trước khi báo lỗi thật.
-    triesLeft = triesLeft == null ? 3 : triesLeft;
-    return fetch(url, options)
-      .then(function (res) { return res.text(); })
-      .then(function (text) {
-        try {
-          return JSON.parse(text);
-        } catch (e) {
-          throw new Error("Google trả về lỗi tạm thời (không phải JSON)");
-        }
-      })
-      .catch(function (err) {
-        if (triesLeft > 1) {
-          return sleep(1500).then(function () {
-            return fetchJsonRetry(url, options, triesLeft - 1);
-          });
-        }
-        throw err;
-      });
-  }
-
-  function pushToLeaveSystem(row) {
-    const homNay = new Date();
-    const ngayDuyet = String(homNay.getDate()).padStart(2, "0") + "/" + String(homNay.getMonth() + 1).padStart(2, "0") + "/" + homNay.getFullYear();
-
-    fetchJsonRetry(LEAVE_SHEET_API_URL + "?key=" + LEAVE_SHEET_KEY + "&t=" + Date.now(), { cache: "no-store" })
-      .then(function (data) {
-        const entries = (data && data.entries) || [];
-        const nextId = entries.reduce(function (m, e) { return Math.max(m, e.id || 0); }, 0) + 1;
-        const entry = {
-          id: nextId,
-          ten: row.ten,
-          loai: inferLoaiNghi(row.loaiYeuCau, row.noiDung),
-          tungay: row.tuNgayNghi,
-          denngay: row.denNgayNghi,
-          ngaynop: vnDateToIso(row.ngay) || homNay.toISOString().slice(0, 10),
-          ghichu: "Tự động từ yêu cầu đã duyệt ngày " + ngayDuyet + ": " + (row.loaiYeuCau || "") + (row.noiDung ? " — " + row.noiDung : "") + (row.ghiChuXuLy ? " (Ghi chú duyệt: " + row.ghiChuXuLy + ")" : "")
-        };
-        entries.push(entry);
-        return fetchJsonRetry(LEAVE_SHEET_API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({ action: "save", key: LEAVE_SHEET_KEY, payload: { entries: entries } })
-        });
-      })
-      .then(function (data) {
-        if (!data || !data.ok) {
-          throw new Error((data && data.error) || "không rõ");
-        }
-        danhDauDaDayLichNghi(row.id);
-        loadEntries();
-      })
-      .catch(function (err) {
-        alert("Đã duyệt, nhưng đẩy sang lịch nghỉ phép lỗi: " + err.message + " — cần vào trang lịch nghỉ phép thêm thủ công.");
-      });
   }
 
   function onXoa(id) {
