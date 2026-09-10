@@ -165,8 +165,17 @@
           </div>
 
           <div class="field">
-            <label for="loaiYeuCau">Loại yêu cầu</label>
-            <input type="text" id="loaiYeuCau" name="loaiYeuCau" placeholder="VD: Xin nghỉ phép, Đổi ca, Xin xe, Ứng lương..." required>
+            <label for="loaiYeuCauSelect">Loại yêu cầu</label>
+            <select id="loaiYeuCauSelect" name="loaiYeuCauSelect" required>
+              <option value="" disabled selected>-- Chọn loại yêu cầu --</option>
+              <option value="Nghỉ phép">Nghỉ phép</option>
+              <option value="Khác">Khác</option>
+            </select>
+          </div>
+
+          <div class="field" id="loaiYeuCauKhacField" style="display:none;">
+            <label for="loaiYeuCauKhac">Loại yêu cầu (ghi rõ)</label>
+            <input type="text" id="loaiYeuCauKhac" name="loaiYeuCauKhac" placeholder="VD: Đổi ca, Xin xe, Ứng lương...">
           </div>
 
           <div class="field-row" id="ngayNghiField" style="display:none;">
@@ -208,6 +217,14 @@
           <div class="field">
             <label for="denNgay">Đến ngày</label>
             <input type="date" id="denNgay">
+          </div>
+          <div class="field">
+            <label for="locLoaiYeuCau">Loại yêu cầu</label>
+            <select id="locLoaiYeuCau">
+              <option value="">Tất cả</option>
+              <option value="Nghỉ phép">Nghỉ phép</option>
+              <option value="Khác">Khác</option>
+            </select>
           </div>
           <div class="field">
             <label for="locTrangThai">Trạng thái</label>
@@ -259,7 +276,9 @@
   const form = document.getElementById("reqForm");
   const ngayInput = document.getElementById("ngay");
   const tenInput = document.getElementById("ten");
-  const loaiYeuCauInput = document.getElementById("loaiYeuCau");
+  const loaiYeuCauSelect = document.getElementById("loaiYeuCauSelect");
+  const loaiYeuCauKhacField = document.getElementById("loaiYeuCauKhacField");
+  const loaiYeuCauKhacInput = document.getElementById("loaiYeuCauKhac");
   const ngayNghiField = document.getElementById("ngayNghiField");
   const ngayNghiHint = document.getElementById("ngayNghiHint");
   const tuNgayNghiInput = document.getElementById("tuNgayNghi");
@@ -272,6 +291,7 @@
   const configWarning = document.getElementById("configWarning");
   const tuNgayInput = document.getElementById("tuNgay");
   const denNgayInput = document.getElementById("denNgay");
+  const locLoaiYeuCauSelect = document.getElementById("locLoaiYeuCau");
   const locTrangThaiSelect = document.getElementById("locTrangThai");
   const clearFilterBtn = document.getElementById("clearFilterBtn");
   const thNgay = document.getElementById("thNgay");
@@ -287,15 +307,17 @@
     ngayInput.value = today.toISOString().slice(0, 10);
 
     form.addEventListener("submit", onSubmit);
-    loaiYeuCauInput.addEventListener("input", toggleNgayNghiField);
+    loaiYeuCauSelect.addEventListener("change", toggleLoaiYeuCauFields);
     refreshBtn.addEventListener("click", loadEntries);
     tuNgayInput.addEventListener("change", renderTable);
     denNgayInput.addEventListener("change", renderTable);
     locTrangThaiSelect.addEventListener("change", renderTable);
+    locLoaiYeuCauSelect.addEventListener("change", renderTable);
     clearFilterBtn.addEventListener("click", function () {
       tuNgayInput.value = "";
       denNgayInput.value = "";
       locTrangThaiSelect.value = "";
+      locLoaiYeuCauSelect.value = "";
       renderTable();
     });
     thNgay.addEventListener("click", function () {
@@ -313,14 +335,22 @@
   }
 
   function isNghiPhep(text) {
-    return /nghỉ/i.test(text || "");
+    // Dùng cho dữ liệu cũ nhập tự do (trước khi có dropdown) — dropdown mới
+    // thì so khớp thẳng với "Nghỉ phép", không cần đoán qua chữ "nghỉ" nữa.
+    return String(text || "").trim() === "Nghỉ phép" || /nghỉ/i.test(text || "");
   }
 
-  function toggleNgayNghiField() {
-    const show = isNghiPhep(loaiYeuCauInput.value);
-    ngayNghiField.style.display = show ? "flex" : "none";
-    ngayNghiHint.style.display = show ? "block" : "none";
-    if (!show) {
+  function toggleLoaiYeuCauFields() {
+    const isKhac = loaiYeuCauSelect.value === "Khác";
+    const isNghi = loaiYeuCauSelect.value === "Nghỉ phép";
+
+    loaiYeuCauKhacField.style.display = isKhac ? "block" : "none";
+    loaiYeuCauKhacInput.required = isKhac;
+    if (!isKhac) loaiYeuCauKhacInput.value = "";
+
+    ngayNghiField.style.display = isNghi ? "flex" : "none";
+    ngayNghiHint.style.display = isNghi ? "block" : "none";
+    if (!isNghi) {
       tuNgayNghiInput.value = "";
       denNgayNghiInput.value = "";
     }
@@ -338,16 +368,19 @@
       return;
     }
 
+    const isNghi = loaiYeuCauSelect.value === "Nghỉ phép";
+    const isKhac = loaiYeuCauSelect.value === "Khác";
+
     const payload = {
       // Gửi nguyên dạng "yyyy-MM-dd" của <input type="date"> — không tự
       // format lại thành dd/MM/yyyy vì Google Sheets sẽ đoán nhầm ngày ≤12
       // theo kiểu Mỹ (MM/DD) khi ghi chuỗi. Code.gs dựng Date từ giá trị này.
       ngay: ngayInput.value,
       ten: tenInput.value.trim(),
-      loaiYeuCau: loaiYeuCauInput.value.trim(),
+      loaiYeuCau: isKhac ? loaiYeuCauKhacInput.value.trim() : loaiYeuCauSelect.value,
       noiDung: noiDungInput.value.trim(),
-      tuNgayNghi: ngayNghiField.style.display !== "none" ? tuNgayNghiInput.value : "",
-      denNgayNghi: ngayNghiField.style.display !== "none" ? denNgayNghiInput.value : ""
+      tuNgayNghi: isNghi ? tuNgayNghiInput.value : "",
+      denNgayNghi: isNghi ? denNgayNghiInput.value : ""
     };
 
     if (!payload.ngay || !payload.ten || !payload.loaiYeuCau || !payload.noiDung) {
@@ -355,7 +388,7 @@
       return;
     }
 
-    if (isNghiPhep(payload.loaiYeuCau) && (payload.tuNgayNghi || payload.denNgayNghi) && (!payload.tuNgayNghi || !payload.denNgayNghi)) {
+    if (isNghi && (payload.tuNgayNghi || payload.denNgayNghi) && (!payload.tuNgayNghi || !payload.denNgayNghi)) {
       showStatus("Đã điền 1 trong 2 ô Từ ngày/Đến ngày nghỉ — điền đủ cả hai hoặc để trống cả hai.", "err");
       return;
     }
@@ -374,7 +407,7 @@
           showStatus("Đã gửi yêu cầu.", "ok");
           form.reset();
           ngayInput.value = new Date().toISOString().slice(0, 10);
-          toggleNgayNghiField();
+          toggleLoaiYeuCauFields();
           loadEntries();
         } else {
           showStatus("Lỗi: " + (data.message || "không rõ"), "err");
@@ -419,8 +452,17 @@
     if (note === null) return; // bấm Cancel
     const row = allEntries.find(function (e) { return e.id === id; });
     capNhatTrangThai(id, "Đã duyệt", note).then(function (data) {
-      if (data && data.result === "success" && row && isNghiPhep(row.loaiYeuCau) && row.tuNgayNghi && row.denNgayNghi && !row.daDayLichNghi) {
-        pushToLeaveSystem(row);
+      if (!data || data.result !== "success" || !row || row.daDayLichNghi || !isNghiPhep(row.loaiYeuCau)) return;
+
+      let tu = row.tuNgayNghi;
+      let den = row.denNgayNghi;
+      if (!tu || !den) {
+        // Yêu cầu cũ nhập tự do, chưa có ô ngày riêng — thử tự đọc ngày từ Nội dung.
+        const parsed = parseNgayNghiFromText(row.noiDung, row.ngay);
+        if (parsed) { tu = parsed.tu; den = parsed.den; }
+      }
+      if (tu && den) {
+        pushToLeaveSystem(Object.assign({}, row, { tuNgayNghi: tu, denNgayNghi: den }));
       }
     });
   }
@@ -433,6 +475,30 @@
 
   function onDatLaiChoDuyet(id) {
     capNhatTrangThai(id, "Chờ duyệt", "");
+  }
+
+  function parseNgayNghiFromText(noiDung, ngayBaoCao) {
+    // Yêu cầu cũ (trước khi có ô "Từ ngày nghỉ"/"Đến ngày nghỉ") ghi ngày ngay trong
+    // Nội dung dạng "Từ ngày 30/09/2026 - 02/10/2026 (...)" hoặc chỉ 1 ngày "ngày 6/9".
+    // Lấy tối đa 2 mốc dd/mm(/yyyy) ĐẦU TIÊN xuất hiện trong text — phần ghi chú trong
+    // ngoặc (VD: "từ 08/08 - 09/08" nói về tháng trước) luôn nằm sau nên không bị lấy nhầm.
+    if (!noiDung) return null;
+    let fallbackYear = null;
+    const ym = String(ngayBaoCao || "").match(/\/(\d{4})$/);
+    if (ym) fallbackYear = ym[1];
+
+    const re = /(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/g;
+    const found = [];
+    let m;
+    while ((m = re.exec(noiDung)) && found.length < 2) {
+      const dd = m[1].padStart(2, "0");
+      const mo = m[2].padStart(2, "0");
+      const yyyy = m[3] || fallbackYear;
+      if (!yyyy || Number(mo) > 12 || Number(dd) > 31) continue;
+      found.push(yyyy + "-" + mo + "-" + dd);
+    }
+    if (!found.length) return null;
+    return found.length === 1 ? { tu: found[0], den: found[0] } : { tu: found[0], den: found[1] };
   }
 
   function inferLoaiNghi(loaiYeuCau, noiDung) {
@@ -453,7 +519,17 @@
     }).catch(function () {}); // không chặn UI nếu lỗi — chỉ để tránh đẩy trùng lần sau
   }
 
+  function vnDateToIso(str) {
+    // "dd/MM/yyyy" -> "yyyy-MM-dd", hoặc "" nếu không parse được.
+    const d = parseVnDate(str);
+    if (!d) return "";
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
   function pushToLeaveSystem(row) {
+    const homNay = new Date();
+    const ngayDuyet = String(homNay.getDate()).padStart(2, "0") + "/" + String(homNay.getMonth() + 1).padStart(2, "0") + "/" + homNay.getFullYear();
+
     fetch(LEAVE_SHEET_API_URL + "?key=" + LEAVE_SHEET_KEY + "&t=" + Date.now(), { cache: "no-store" })
       .then(function (res) { return res.json(); })
       .then(function (data) {
@@ -465,8 +541,8 @@
           loai: inferLoaiNghi(row.loaiYeuCau, row.noiDung),
           tungay: row.tuNgayNghi,
           denngay: row.denNgayNghi,
-          ngaynop: new Date().toISOString().slice(0, 10),
-          ghichu: "Tự động từ yêu cầu đã duyệt: " + (row.loaiYeuCau || "") + (row.noiDung ? " — " + row.noiDung : "")
+          ngaynop: vnDateToIso(row.ngay) || homNay.toISOString().slice(0, 10),
+          ghichu: "Tự động từ yêu cầu đã duyệt ngày " + ngayDuyet + ": " + (row.loaiYeuCau || "") + (row.noiDung ? " — " + row.noiDung : "")
         };
         entries.push(entry);
         return fetch(LEAVE_SHEET_API_URL, {
@@ -579,9 +655,12 @@
     const tuNgay = tuNgayInput.value ? new Date(tuNgayInput.value + "T00:00:00") : null;
     const denNgay = denNgayInput.value ? new Date(denNgayInput.value + "T00:00:00") : null;
     const trangThaiLoc = locTrangThaiSelect.value;
+    const loaiYeuCauLoc = locLoaiYeuCauSelect.value;
 
     const filtered = allEntries.filter(function (row) {
       if (trangThaiLoc && row.trangThai !== trangThaiLoc) return false;
+      if (loaiYeuCauLoc === "Nghỉ phép" && !isNghiPhep(row.loaiYeuCau)) return false;
+      if (loaiYeuCauLoc === "Khác" && isNghiPhep(row.loaiYeuCau)) return false;
       if (!tuNgay && !denNgay) return true;
       const d = parseVnDate(row.ngay);
       if (!d) return true; // giữ lại dòng không parse được ngày thay vì ẩn nhầm
