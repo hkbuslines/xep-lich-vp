@@ -545,12 +545,39 @@
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
 
+  function sleep(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  function fetchJsonRetry(url, options, triesLeft) {
+    // Apps Script thỉnh thoảng trả về trang lỗi HTML tạm thời ("Sorry, unable to
+    // open the file at present") thay vì JSON — không phải lỗi dữ liệu, thử lại
+    // sau 1-2 giây gần như luôn qua. Tự thử lại tối đa 3 lần trước khi báo lỗi thật.
+    triesLeft = triesLeft == null ? 3 : triesLeft;
+    return fetch(url, options)
+      .then(function (res) { return res.text(); })
+      .then(function (text) {
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          throw new Error("Google trả về lỗi tạm thời (không phải JSON)");
+        }
+      })
+      .catch(function (err) {
+        if (triesLeft > 1) {
+          return sleep(1500).then(function () {
+            return fetchJsonRetry(url, options, triesLeft - 1);
+          });
+        }
+        throw err;
+      });
+  }
+
   function pushToLeaveSystem(row) {
     const homNay = new Date();
     const ngayDuyet = String(homNay.getDate()).padStart(2, "0") + "/" + String(homNay.getMonth() + 1).padStart(2, "0") + "/" + homNay.getFullYear();
 
-    fetch(LEAVE_SHEET_API_URL + "?key=" + LEAVE_SHEET_KEY + "&t=" + Date.now(), { cache: "no-store" })
-      .then(function (res) { return res.json(); })
+    fetchJsonRetry(LEAVE_SHEET_API_URL + "?key=" + LEAVE_SHEET_KEY + "&t=" + Date.now(), { cache: "no-store" })
       .then(function (data) {
         const entries = (data && data.entries) || [];
         const nextId = entries.reduce(function (m, e) { return Math.max(m, e.id || 0); }, 0) + 1;
@@ -564,13 +591,12 @@
           ghichu: "Tự động từ yêu cầu đã duyệt ngày " + ngayDuyet + ": " + (row.loaiYeuCau || "") + (row.noiDung ? " — " + row.noiDung : "") + (row.ghiChuXuLy ? " (Ghi chú duyệt: " + row.ghiChuXuLy + ")" : "")
         };
         entries.push(entry);
-        return fetch(LEAVE_SHEET_API_URL, {
+        return fetchJsonRetry(LEAVE_SHEET_API_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify({ action: "save", key: LEAVE_SHEET_KEY, payload: { entries: entries } })
         });
       })
-      .then(function (res) { return res.json(); })
       .then(function (data) {
         if (!data || !data.ok) {
           throw new Error((data && data.error) || "không rõ");
