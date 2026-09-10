@@ -444,7 +444,9 @@
   }
 
   function onDangXuLy(id) {
-    capNhatTrangThai(id, "Đang xử lý", "");
+    const note = window.prompt("Ghi chú khi chuyển sang Đang xử lý (có thể để trống):", "");
+    if (note === null) return; // bấm Cancel
+    capNhatTrangThai(id, "Đang xử lý", note);
   }
 
   function onDuyet(id) {
