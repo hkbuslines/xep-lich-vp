@@ -107,6 +107,7 @@
   col.col-ten { width: 130px; }
   col.col-loai { width: 140px; }
   col.col-trangthai { width: 110px; }
+  col.col-thoigianxl { width: 130px; }
   col.col-action { width: 190px; }
   .empty, .loading { color: var(--muted); font-size: 13px; padding: 8px 0; }
   .table-scroll { overflow-x: auto; }
@@ -242,20 +243,21 @@
           <table>
             <colgroup>
               <col class="col-ngay"><col class="col-ten"><col class="col-loai">
-              <col><col class="col-trangthai"><col class="col-action">
+              <col><col class="col-trangthai"><col class="col-thoigianxl"><col class="col-action">
             </colgroup>
             <thead>
               <tr>
-                <th id="thNgay" class="th-sortable">Ngày <span id="sortIcon" class="sort-icon">▾</span></th>
+                <th id="thNgay" class="th-sortable" data-sort-field="ngay">Ngày <span class="sort-icon" data-sort-icon="ngay"></span></th>
                 <th>Người nộp</th>
                 <th>Loại yêu cầu</th>
                 <th>Nội dung</th>
                 <th>Trạng thái</th>
+                <th id="thThoiGianXL" class="th-sortable" data-sort-field="thoiGianXuLy">Thời gian xử lý <span class="sort-icon" data-sort-icon="thoiGianXuLy"></span></th>
                 <th>Xử lý</th>
               </tr>
             </thead>
             <tbody id="reqBody">
-              <tr><td colspan="6" class="loading">Đang tải...</td></tr>
+              <tr><td colspan="7" class="loading">Đang tải...</td></tr>
             </tbody>
           </table>
         </div>
@@ -294,11 +296,13 @@
   const locLoaiYeuCauSelect = document.getElementById("locLoaiYeuCau");
   const locTrangThaiSelect = document.getElementById("locTrangThai");
   const clearFilterBtn = document.getElementById("clearFilterBtn");
-  const thNgay = document.getElementById("thNgay");
-  const sortIcon = document.getElementById("sortIcon");
+  const sortableHeaders = document.querySelectorAll(".th-sortable");
 
   let allEntries = [];
-  let ngaySortDir = "desc"; // "desc" = mới nhất trước (mặc định), "asc" = cũ nhất trước
+  // Mặc định sắp theo Thời gian xử lý (mới xử lý gần đây nhất lên đầu) để tiện theo dõi
+  // — bấm vào tiêu đề cột Ngày hoặc Thời gian xử lý để đổi cột/chiều sắp xếp.
+  let sortField = "thoiGianXuLy";
+  let sortDir = "desc"; // "desc" = mới nhất trước, "asc" = cũ nhất trước
 
   function init() {
     if (!WEB_APP_URL) configWarning.style.display = "block";
@@ -320,18 +324,28 @@
       locLoaiYeuCauSelect.value = "";
       renderTable();
     });
-    thNgay.addEventListener("click", function () {
-      ngaySortDir = ngaySortDir === "asc" ? "desc" : "asc";
-      updateSortIcon();
-      renderTable();
+    sortableHeaders.forEach(function (th) {
+      th.addEventListener("click", function () {
+        const field = th.getAttribute("data-sort-field");
+        if (sortField === field) {
+          sortDir = sortDir === "asc" ? "desc" : "asc";
+        } else {
+          sortField = field;
+          sortDir = "desc";
+        }
+        updateSortIcons();
+        renderTable();
+      });
     });
-    updateSortIcon();
+    updateSortIcons();
 
     loadEntries();
   }
 
-  function updateSortIcon() {
-    sortIcon.textContent = ngaySortDir === "asc" ? "▴" : "▾";
+  function updateSortIcons() {
+    document.querySelectorAll("[data-sort-icon]").forEach(function (el) {
+      el.textContent = el.getAttribute("data-sort-icon") === sortField ? (sortDir === "asc" ? "▴" : "▾") : "";
+    });
   }
 
   function isoToVnDate(str) {
@@ -646,25 +660,34 @@
     return isNaN(d.getTime()) ? null : d;
   }
 
+  function parseVnDateTime(str) {
+    // "dd/MM/yyyy HH:mm" -> Date, hoặc null nếu không parse được (VD: rỗng vì chưa xử lý).
+    if (!str) return null;
+    const m = String(str).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})$/);
+    if (!m) return null;
+    const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4]), Number(m[5]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
   function loadEntries() {
     if (!WEB_APP_URL) {
-      reqBody.innerHTML = '<tr><td colspan="6" class="empty">Chưa cấu hình WEB_APP_URL.</td></tr>';
+      reqBody.innerHTML = '<tr><td colspan="7" class="empty">Chưa cấu hình WEB_APP_URL.</td></tr>';
       return;
     }
-    reqBody.innerHTML = '<tr><td colspan="6" class="loading">Đang tải...</td></tr>';
+    reqBody.innerHTML = '<tr><td colspan="7" class="loading">Đang tải...</td></tr>';
 
     fetch(WEB_APP_URL)
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (data.result !== "success") {
-          reqBody.innerHTML = '<tr><td colspan="6" class="empty">Lỗi tải dữ liệu.</td></tr>';
+          reqBody.innerHTML = '<tr><td colspan="7" class="empty">Lỗi tải dữ liệu.</td></tr>';
           return;
         }
         allEntries = data.data;
         renderTable();
       })
       .catch(function (err) {
-        reqBody.innerHTML = '<tr><td colspan="6" class="empty">Lỗi tải dữ liệu: ' + escapeHtml(err.message) + "</td></tr>";
+        reqBody.innerHTML = '<tr><td colspan="7" class="empty">Lỗi tải dữ liệu: ' + escapeHtml(err.message) + "</td></tr>";
       });
   }
 
@@ -715,16 +738,16 @@
     });
 
     filtered.sort(function (a, b) {
-      const da = parseVnDate(a.ngay);
-      const db = parseVnDate(b.ngay);
+      const da = sortField === "thoiGianXuLy" ? parseVnDateTime(a.thoiGianXuLy) : parseVnDate(a.ngay);
+      const db = sortField === "thoiGianXuLy" ? parseVnDateTime(b.thoiGianXuLy) : parseVnDate(b.ngay);
       if (!da && !db) return 0;
-      if (!da) return 1; // ngày không parse được xếp cuối
+      if (!da) return 1; // không parse được (VD: chưa từng xử lý) xếp cuối
       if (!db) return -1;
-      return ngaySortDir === "asc" ? da - db : db - da;
+      return sortDir === "asc" ? da - db : db - da;
     });
 
     if (!filtered.length) {
-      reqBody.innerHTML = '<tr><td colspan="6" class="empty">Không có yêu cầu nào phù hợp.</td></tr>';
+      reqBody.innerHTML = '<tr><td colspan="7" class="empty">Không có yêu cầu nào phù hợp.</td></tr>';
       return;
     }
 
@@ -736,6 +759,7 @@
         "<td>" + escapeHtml(row.loaiYeuCau) + "</td>" +
         "<td>" + escapeHtml(row.noiDung) + "</td>" +
         "<td>" + badgeFor(row.trangThai) + ghiChu + "</td>" +
+        "<td>" + escapeHtml(row.thoiGianXuLy || "—") + "</td>" +
         "<td>" + actionsFor(row) + "</td>" +
         "</tr>";
     }).join("");
