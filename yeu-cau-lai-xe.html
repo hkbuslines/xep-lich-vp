@@ -334,6 +334,12 @@
     sortIcon.textContent = ngaySortDir === "asc" ? "▴" : "▾";
   }
 
+  function isoToVnDate(str) {
+    // "yyyy-MM-dd" -> "dd/MM/yyyy"
+    const m = String(str || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? m[3] + "/" + m[2] + "/" + m[1] : "";
+  }
+
   function isNghiPhep(text) {
     // Dùng cho dữ liệu cũ nhập tự do (trước khi có dropdown) — dropdown mới
     // thì so khớp thẳng với "Nghỉ phép", không cần đoán qua chữ "nghỉ" nữa.
@@ -371,6 +377,13 @@
     const isNghi = loaiYeuCauSelect.value === "Nghỉ phép";
     const isKhac = loaiYeuCauSelect.value === "Khác";
 
+    const coNgayNghi = isNghi && tuNgayNghiInput.value && denNgayNghiInput.value;
+    const ngayNghiPrefix = coNgayNghi
+      ? (tuNgayNghiInput.value === denNgayNghiInput.value
+          ? "Ngày " + isoToVnDate(tuNgayNghiInput.value)
+          : "Từ ngày " + isoToVnDate(tuNgayNghiInput.value) + " - " + isoToVnDate(denNgayNghiInput.value)) + ": "
+      : "";
+
     const payload = {
       // Gửi nguyên dạng "yyyy-MM-dd" của <input type="date"> — không tự
       // format lại thành dd/MM/yyyy vì Google Sheets sẽ đoán nhầm ngày ≤12
@@ -378,7 +391,9 @@
       ngay: ngayInput.value,
       ten: tenInput.value.trim(),
       loaiYeuCau: isKhac ? loaiYeuCauKhacInput.value.trim() : loaiYeuCauSelect.value,
-      noiDung: noiDungInput.value.trim(),
+      // Ghi luôn ngày nghỉ vào đầu Nội dung để hiện ngay trong bảng danh sách
+      // (cột Nội dung), không phải mở riêng mới thấy Từ ngày/Đến ngày.
+      noiDung: (ngayNghiPrefix + noiDungInput.value.trim()).trim(),
       tuNgayNghi: isNghi ? tuNgayNghiInput.value : "",
       denNgayNghi: isNghi ? denNgayNghiInput.value : ""
     };
