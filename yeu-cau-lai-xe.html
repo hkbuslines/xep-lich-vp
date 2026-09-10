@@ -464,7 +464,9 @@
         if (parsed) { tu = parsed.tu; den = parsed.den; }
       }
       if (tu && den) {
-        pushToLeaveSystem(Object.assign({}, row, { tuNgayNghi: tu, denNgayNghi: den }));
+        // row lấy từ allEntries trước khi duyệt nên ghiChuXuLy còn cũ — ghi đè bằng
+        // note vừa nhập (giờ đã là giá trị thật trên Sheet) để đẩy đúng ghi chú mới.
+        pushToLeaveSystem(Object.assign({}, row, { tuNgayNghi: tu, denNgayNghi: den, ghiChuXuLy: note }));
       }
     });
   }
@@ -544,7 +546,7 @@
           tungay: row.tuNgayNghi,
           denngay: row.denNgayNghi,
           ngaynop: vnDateToIso(row.ngay) || homNay.toISOString().slice(0, 10),
-          ghichu: "Tự động từ yêu cầu đã duyệt ngày " + ngayDuyet + ": " + (row.loaiYeuCau || "") + (row.noiDung ? " — " + row.noiDung : "")
+          ghichu: "Tự động từ yêu cầu đã duyệt ngày " + ngayDuyet + ": " + (row.loaiYeuCau || "") + (row.noiDung ? " — " + row.noiDung : "") + (row.ghiChuXuLy ? " (Ghi chú duyệt: " + row.ghiChuXuLy + ")" : "")
         };
         entries.push(entry);
         return fetch(LEAVE_SHEET_API_URL, {
