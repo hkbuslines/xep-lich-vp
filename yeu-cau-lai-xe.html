@@ -50,6 +50,9 @@
   }
   label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
   .field { margin-bottom: 16px; }
+  .field-row { display: flex; gap: 12px; }
+  .field-row .field { flex: 1 1 0; min-width: 0; margin-bottom: 16px; }
+  .field-hint { font-size: 12px; color: var(--muted); margin: -10px 0 16px; }
   input[type=text], input[type=date], select, textarea {
     width: 100%;
     padding: 10px 12px;
@@ -166,6 +169,20 @@
             <input type="text" id="loaiYeuCau" name="loaiYeuCau" placeholder="VD: Xin nghỉ phép, Đổi ca, Xin xe, Ứng lương..." required>
           </div>
 
+          <div class="field-row" id="ngayNghiField" style="display:none;">
+            <div class="field">
+              <label for="tuNgayNghi">Từ ngày nghỉ</label>
+              <input type="date" id="tuNgayNghi" name="tuNgayNghi">
+            </div>
+            <div class="field">
+              <label for="denNgayNghi">Đến ngày nghỉ</label>
+              <input type="date" id="denNgayNghi" name="denNgayNghi">
+            </div>
+          </div>
+          <div class="field-hint" id="ngayNghiHint" style="display:none;">
+            Điền đủ 2 ngày để khi duyệt, hệ thống tự thêm vào lịch nghỉ phép lái xe.
+          </div>
+
           <div class="field">
             <label for="noiDung">Nội dung yêu cầu</label>
             <textarea id="noiDung" name="noiDung" placeholder="Mô tả cụ thể lái xe muốn gì..." required></textarea>
@@ -234,10 +251,19 @@
   // Dán URL Web App Apps Script của bạn vào đây (xem hướng dẫn trong Code.gs).
   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz0oyBbNRD7L5rJr9wp6DeFwvma9uOUcIa2-fE8x7bXR3K4Tb-Idw3HB6cz-6tTexma/exec";
 
+  // Backend chung của trang "Lịch nghỉ phép lái xe" (hkbuslines.github.io/bang_gia_hk_vp/lai_xe_nghi.html),
+  // dùng để tự động thêm 1 mục nghỉ khi duyệt yêu cầu nghỉ phép ở đây.
+  const LEAVE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbx-ZuB1sby0hp77b4tj4UY_3JUwAEUkA92GgXN8lQC4pLV7gVL3XPvO1xfDhNFF5nG6LQ/exec";
+  const LEAVE_SHEET_KEY = "leave";
+
   const form = document.getElementById("reqForm");
   const ngayInput = document.getElementById("ngay");
   const tenInput = document.getElementById("ten");
   const loaiYeuCauInput = document.getElementById("loaiYeuCau");
+  const ngayNghiField = document.getElementById("ngayNghiField");
+  const ngayNghiHint = document.getElementById("ngayNghiHint");
+  const tuNgayNghiInput = document.getElementById("tuNgayNghi");
+  const denNgayNghiInput = document.getElementById("denNgayNghi");
   const noiDungInput = document.getElementById("noiDung");
   const submitBtn = document.getElementById("submitBtn");
   const statusEl = document.getElementById("status");
@@ -261,6 +287,7 @@
     ngayInput.value = today.toISOString().slice(0, 10);
 
     form.addEventListener("submit", onSubmit);
+    loaiYeuCauInput.addEventListener("input", toggleNgayNghiField);
     refreshBtn.addEventListener("click", loadEntries);
     tuNgayInput.addEventListener("change", renderTable);
     denNgayInput.addEventListener("change", renderTable);
@@ -285,6 +312,20 @@
     sortIcon.textContent = ngaySortDir === "asc" ? "▴" : "▾";
   }
 
+  function isNghiPhep(text) {
+    return /nghỉ/i.test(text || "");
+  }
+
+  function toggleNgayNghiField() {
+    const show = isNghiPhep(loaiYeuCauInput.value);
+    ngayNghiField.style.display = show ? "flex" : "none";
+    ngayNghiHint.style.display = show ? "block" : "none";
+    if (!show) {
+      tuNgayNghiInput.value = "";
+      denNgayNghiInput.value = "";
+    }
+  }
+
   function showStatus(msg, kind) {
     statusEl.textContent = msg;
     statusEl.className = "status " + kind;
@@ -304,11 +345,18 @@
       ngay: ngayInput.value,
       ten: tenInput.value.trim(),
       loaiYeuCau: loaiYeuCauInput.value.trim(),
-      noiDung: noiDungInput.value.trim()
+      noiDung: noiDungInput.value.trim(),
+      tuNgayNghi: ngayNghiField.style.display !== "none" ? tuNgayNghiInput.value : "",
+      denNgayNghi: ngayNghiField.style.display !== "none" ? denNgayNghiInput.value : ""
     };
 
     if (!payload.ngay || !payload.ten || !payload.loaiYeuCau || !payload.noiDung) {
       showStatus("Vui lòng điền đầy đủ Ngày, Tên, Loại yêu cầu và Nội dung.", "err");
+      return;
+    }
+
+    if (isNghiPhep(payload.loaiYeuCau) && (payload.tuNgayNghi || payload.denNgayNghi) && (!payload.tuNgayNghi || !payload.denNgayNghi)) {
+      showStatus("Đã điền 1 trong 2 ô Từ ngày/Đến ngày nghỉ — điền đủ cả hai hoặc để trống cả hai.", "err");
       return;
     }
 
@@ -326,6 +374,7 @@
           showStatus("Đã gửi yêu cầu.", "ok");
           form.reset();
           ngayInput.value = new Date().toISOString().slice(0, 10);
+          toggleNgayNghiField();
           loadEntries();
         } else {
           showStatus("Lỗi: " + (data.message || "không rõ"), "err");
@@ -340,7 +389,7 @@
   }
 
   function capNhatTrangThai(id, trangThai, ghiChuXuLy) {
-    if (!WEB_APP_URL) return;
+    if (!WEB_APP_URL) return Promise.resolve(null);
     return fetch(WEB_APP_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -353,9 +402,11 @@
         } else {
           alert("Lỗi: " + (data.message || "không rõ"));
         }
+        return data;
       })
       .catch(function (err) {
         alert("Lỗi kết nối: " + err.message);
+        return null;
       });
   }
 
@@ -366,7 +417,12 @@
   function onDuyet(id) {
     const note = window.prompt("Ghi chú khi duyệt (có thể để trống):", "");
     if (note === null) return; // bấm Cancel
-    capNhatTrangThai(id, "Đã duyệt", note);
+    const row = allEntries.find(function (e) { return e.id === id; });
+    capNhatTrangThai(id, "Đã duyệt", note).then(function (data) {
+      if (data && data.result === "success" && row && isNghiPhep(row.loaiYeuCau) && row.tuNgayNghi && row.denNgayNghi && !row.daDayLichNghi) {
+        pushToLeaveSystem(row);
+      }
+    });
   }
 
   function onTuChoi(id) {
@@ -377,6 +433,59 @@
 
   function onDatLaiChoDuyet(id) {
     capNhatTrangThai(id, "Chờ duyệt", "");
+  }
+
+  function inferLoaiNghi(loaiYeuCau, noiDung) {
+    // Khớp với LOAI_LABEL bên trang lịch nghỉ phép: P/DX/KB/D.
+    const text = ((loaiYeuCau || "") + " " + (noiDung || "")).toLowerCase();
+    if (text.indexOf("dài ngày") !== -1) return "D";
+    if (text.indexOf("không báo") !== -1 || text.indexOf("ko báo") !== -1) return "KB";
+    if (text.indexOf("đột xuất") !== -1) return "DX";
+    return "P";
+  }
+
+  function danhDauDaDayLichNghi(id) {
+    if (!WEB_APP_URL) return;
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "danhDauDaDayLichNghi", id: id })
+    }).catch(function () {}); // không chặn UI nếu lỗi — chỉ để tránh đẩy trùng lần sau
+  }
+
+  function pushToLeaveSystem(row) {
+    fetch(LEAVE_SHEET_API_URL + "?key=" + LEAVE_SHEET_KEY + "&t=" + Date.now(), { cache: "no-store" })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        const entries = (data && data.entries) || [];
+        const nextId = entries.reduce(function (m, e) { return Math.max(m, e.id || 0); }, 0) + 1;
+        const entry = {
+          id: nextId,
+          ten: row.ten,
+          loai: inferLoaiNghi(row.loaiYeuCau, row.noiDung),
+          tungay: row.tuNgayNghi,
+          denngay: row.denNgayNghi,
+          ngaynop: new Date().toISOString().slice(0, 10),
+          ghichu: "Tự động từ yêu cầu đã duyệt: " + (row.loaiYeuCau || "") + (row.noiDung ? " — " + row.noiDung : "")
+        };
+        entries.push(entry);
+        return fetch(LEAVE_SHEET_API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action: "save", key: LEAVE_SHEET_KEY, payload: { entries: entries } })
+        });
+      })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data || !data.ok) {
+          throw new Error((data && data.error) || "không rõ");
+        }
+        danhDauDaDayLichNghi(row.id);
+        loadEntries();
+      })
+      .catch(function (err) {
+        alert("Đã duyệt, nhưng đẩy sang lịch nghỉ phép lỗi: " + err.message + " — cần vào trang lịch nghỉ phép thêm thủ công.");
+      });
   }
 
   function onXoa(id) {
