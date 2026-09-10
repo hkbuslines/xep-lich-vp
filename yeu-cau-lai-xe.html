@@ -97,6 +97,9 @@
   table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
   th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; word-wrap: break-word; }
   th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  .th-sortable { cursor: pointer; user-select: none; }
+  .th-sortable:hover { color: var(--text); }
+  .sort-icon { font-size: 10px; display: inline-block; }
   col.col-ngay { width: 88px; }
   col.col-ten { width: 130px; }
   col.col-loai { width: 140px; }
@@ -209,7 +212,7 @@
             </colgroup>
             <thead>
               <tr>
-                <th>Ngày</th>
+                <th id="thNgay" class="th-sortable">Ngày <span id="sortIcon" class="sort-icon">▾</span></th>
                 <th>Người nộp</th>
                 <th>Loại yêu cầu</th>
                 <th>Nội dung</th>
@@ -245,8 +248,11 @@
   const denNgayInput = document.getElementById("denNgay");
   const locTrangThaiSelect = document.getElementById("locTrangThai");
   const clearFilterBtn = document.getElementById("clearFilterBtn");
+  const thNgay = document.getElementById("thNgay");
+  const sortIcon = document.getElementById("sortIcon");
 
   let allEntries = [];
+  let ngaySortDir = "desc"; // "desc" = mới nhất trước (mặc định), "asc" = cũ nhất trước
 
   function init() {
     if (!WEB_APP_URL) configWarning.style.display = "block";
@@ -265,8 +271,18 @@
       locTrangThaiSelect.value = "";
       renderTable();
     });
+    thNgay.addEventListener("click", function () {
+      ngaySortDir = ngaySortDir === "asc" ? "desc" : "asc";
+      updateSortIcon();
+      renderTable();
+    });
+    updateSortIcon();
 
     loadEntries();
+  }
+
+  function updateSortIcon() {
+    sortIcon.textContent = ngaySortDir === "asc" ? "▴" : "▾";
   }
 
   function showStatus(msg, kind) {
@@ -348,7 +364,9 @@
   }
 
   function onDuyet(id) {
-    capNhatTrangThai(id, "Đã duyệt", "");
+    const note = window.prompt("Ghi chú khi duyệt (có thể để trống):", "");
+    if (note === null) return; // bấm Cancel
+    capNhatTrangThai(id, "Đã duyệt", note);
   }
 
   function onTuChoi(id) {
@@ -461,6 +479,15 @@
       if (tuNgay && d < tuNgay) return false;
       if (denNgay && d > denNgay) return false;
       return true;
+    });
+
+    filtered.sort(function (a, b) {
+      const da = parseVnDate(a.ngay);
+      const db = parseVnDate(b.ngay);
+      if (!da && !db) return 0;
+      if (!da) return 1; // ngày không parse được xếp cuối
+      if (!db) return -1;
+      return ngaySortDir === "asc" ? da - db : db - da;
     });
 
     if (!filtered.length) {
